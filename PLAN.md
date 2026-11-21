@@ -49,11 +49,15 @@ descontar y reintegrar pedidos, alertas) con `tests/test_inventario_base.php`, p
 
 | # | Tarea | Agente | Revisa | Estado |
 |---|---|---|---|---|
-| 4 | Pedidos, pagos, estados y enlace público del pedido | Codex | Copilot | Pendiente |
-| 5 | Pantallas de inventario: existencias, lotes, entradas, ajustes y alertas | OpenCode | Codex | Pendiente |
-| 6 | Mensajes: plantillas, mensaje a un cliente y campañas | Grok | Codex | Pendiente |
+| 4 | Pedidos, pagos, estados y enlace público del pedido | Codex | Copilot | Hecha |
+| 5 | Pantallas de inventario: existencias, lotes, entradas, ajustes y alertas | OpenCode (LongCat) | Copilot | Hecha |
+| 6 | Mensajes: plantillas, mensaje a un cliente y campañas | Grok a medias; lo terminó Codex | Copilot | Hecha |
 | 7 | Usuarios (admin) y pulido de `caso.php` | Por asignar | | Siguiente |
 | 8 | Guía para publicar en Hostinger | Líder | | Siguiente |
+
+Pendientes de la ronda 2: con el inventario vacío, la lista de alertas de `inventario.php` es muy larga (conviene
+plegarla); las funciones de `inventario.php` viven en la página y `producto.php` la incluye (moverlas a
+`includes/inventario.php` y ajustar `tests/test_inventario.php`).
 
 ### T4 — Pedidos (Codex)
 - **Archivos:** `pedidos.php`, `pedido.php`, `pedido_estado.php`, `includes/pedidos.php`, `tests/test_pedidos.php`.
