@@ -54,9 +54,12 @@ tests/run.php + tests/test_<modulo>.php
 | # | Tarea | Agente | Estado |
 |---|---|---|---|
 | 0 | Base: arranque, BD y migraciones, sesión/CSRF/permisos, entrada, inicio, estilos, pruebas | Claude (líder) | Hecha |
-| 1 | Clientes: lista con buscador, ficha, crear/editar, consentimiento, historial | OpenCode | Pendiente |
-| 2 | Casos, planes versionados, seguimientos, enlace público y WhatsApp | Kilo | Pendiente |
-| 3 | Lía: módulo de IA con respaldo y asistente por texto/voz | Devin | Pendiente |
+| 1 | Clientes: lista con buscador, ficha, crear/editar, consentimiento, historial | OpenCode (DeepSeek V4.1 Flash) | En curso (rama `Hatchedbot/t1-clientes`) |
+| 2 | Casos, planes versionados, seguimientos, enlace público y WhatsApp | OpenCode (MiMo V2.6 Flash), relevo de Kilo | En curso (rama `Hatchedbot/t2-casos`) |
+| 3 | Lía: módulo de IA con respaldo y asistente por texto/voz | OpenCode (DeepSeek V4.1 Flash), relevo de Devin | En curso (rama `Hatchedbot/t3-lia`) |
+
+Kilo y Devin no arrancan desde las terminales de Orca (Git Bash no encuentra `kilo.cmd` ni `devin.cmd`), así que
+sus tareas pasaron a OpenCode el 2026-11-20.
 | 4 | Usuarios (admin): crear, desactivar, cambiar contraseña | OpenCode o Kilo | Siguiente ronda |
 | 5 | Pulido visual y móvil revisado en navegador | Antigravity | Siguiente ronda |
 | 6 | Guía para publicar en Hostinger | Líder | Siguiente ronda |
