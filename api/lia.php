@@ -1,6 +1,6 @@
 <?php
 /**
- * POST JSON {texto, historial[]} con la cabecera X-CSRF.
+ * POST JSON {texto} con la cabecera X-CSRF.
  * Responde {respuesta, accion, url}. La URL siempre la arma el servidor.
  */
 declare(strict_types=1);
@@ -20,11 +20,6 @@ if (!is_array($cuerpo)) {
 }
 
 $texto = trim((string) ($cuerpo['texto'] ?? ''));
-$historial = $cuerpo['historial'] ?? [];
-if (!is_array($historial)) {
-    $historial = [];
-}
-
 if ($texto === '') {
     json_respuesta([
         'respuesta' => 'Escríbeme qué quieres saber de un cliente o de sus casos.',
@@ -42,7 +37,7 @@ if (!ia_disponible()) {
 }
 
 try {
-    $respuesta = lia_responder($usuario, $texto, $historial);
+    $respuesta = lia_responder($usuario, $texto, $_SESSION['lia_historial'] ?? []);
 } catch (RuntimeException $ex) {
     $mensaje = $ex->getMessage() === 'Se agotó por hoy el uso de la IA'
         ? 'Se agotó por hoy el uso de la IA. Inténtalo mañana.'

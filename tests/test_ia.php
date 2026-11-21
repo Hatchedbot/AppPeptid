@@ -12,12 +12,12 @@ function t3_config_ia(int $limite = 50): void
         'proveedores' => [
             'gemini' => [
                 'url' => 'https://ia.invalida/gemini',
-                'clave' => 'clave-de-prueba-gemini',
+                'clave' => '',
                 'modelos' => ['modelo-gemini'],
             ],
             'groq' => [
                 'url' => 'https://ia.invalida/groq',
-                'clave' => 'clave-de-prueba-groq',
+                'clave' => '',
                 'modelos' => ['modelo-groq'],
             ],
         ],
@@ -27,14 +27,16 @@ function t3_config_ia(int $limite = 50): void
 function t3_limpiar_uso(): void
 {
     db()->exec('DELETE FROM ia_uso');
+    unset($_SESSION['lia_historial'], $_SESSION['lia_aliases']);
 }
 
 function t3_crear_cliente(string $nombre, string $telefono, string $ciudad = 'Bogotá', string $condiciones = ''): array
 {
+    $correo = 'persona@ejemplo.test';
     db()->prepare('INSERT INTO clientes (nombre, telefono, correo, ciudad, fecha_nacimiento, condiciones, creado, actualizado)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        ->execute([$nombre, $telefono, 'prueba@ejemplo.test', $ciudad, '1990-05-04', $condiciones, ahora(), ahora()]);
-    return ['id' => (int) db()->lastInsertId(), 'nombre' => $nombre, 'telefono' => $telefono];
+        ->execute([$nombre, $telefono, $correo, $ciudad, '1990-05-04', $condiciones, ahora(), ahora()]);
+    return ['id' => (int) db()->lastInsertId(), 'nombre' => $nombre, 'telefono' => $telefono, 'correo' => $correo];
 }
 
 function t3_crear_caso(int $clienteId, string $titulo, string $estado = 'activo'): int
@@ -47,23 +49,30 @@ function t3_crear_caso(int $clienteId, string $titulo, string $estado = 'activo'
 
 function t3_crear_plan(int $casoId, array $cliente): int
 {
+    $contacto = $cliente['correo'] . ' ' . $cliente['telefono'];
     db()->prepare('INSERT INTO planes (caso_id, version, indicaciones, motivo_cambio, token, creado)
                    VALUES (?, ?, ?, ?, ?, ?)')
-        ->execute([$casoId, 1, 'Tomar con agua. Proceso de ' . $cliente['nombre'], 'Primera versión',
+        ->execute([$casoId, 1, 'Indicaciones privadas ' . $contacto, 'Motivo privado ' . $contacto,
                    token_aleatorio(12), ahora()]);
     $planId = (int) db()->lastInsertId();
-    db()->prepare('INSERT INTO plan_items (plan_id, producto_nombre, dosis, frecuencia, duracion, notas, orden)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)')
-        ->execute([$planId, 'Retatrutide', '2 mg', 'Semanal', '8 semanas', 'Llamar al ' . $cliente['telefono'], 0]);
+    db()->exec("INSERT INTO productos (nombre, presentacion, categoria)
+                VALUES ('Producto de catálogo', 'Prueba', 'Prueba')");
+    $productoId = (int) db()->lastInsertId();
+    $item = db()->prepare('INSERT INTO plan_items (plan_id, producto_id, producto_nombre, dosis, frecuencia, duracion, notas, orden)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $item->execute([$planId, $productoId, 'Copia del nombre', 'Dosis de prueba', 'Semanal', '8 semanas',
+                    'Nota de ítem privada ' . $contacto, 0]);
+    $item->execute([$planId, null, 'Producto libre ' . $contacto, null, null, null, null, 1]);
     return $planId;
 }
 
 function t3_crear_seguimiento(int $casoId, array $cliente): int
 {
+    $contacto = $cliente['correo'] . ' ' . $cliente['telefono'];
     db()->prepare('INSERT INTO seguimientos (caso_id, fecha, tipo, peso, cintura_cm, adherencia, efectos, nota, creado)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        ->execute([$casoId, hoy(), 'control', 85.2, 90.0, 'completa', 'Sin novedad',
-                   'Hablé con ' . $cliente['nombre'] . ' al ' . $cliente['telefono'], ahora()]);
+        ->execute([$casoId, hoy(), 'control', 85.2, 90.0, 'completa', 'Efectos privados ' . $contacto,
+                   'Nota de seguimiento privada ' . $contacto, ahora()]);
     return (int) db()->lastInsertId();
 }
 
@@ -93,12 +102,13 @@ prueba('ia_disponible: sin claves es falso; con IA falsa es verdadero', function
     unset($GLOBALS['IA_FALSA']);
 });
 
-prueba('lo enviado a la IA no lleva nombre, teléfono, ciudad ni condiciones: solo el alias', function () {
+prueba('la pregunta, el contexto y el historial excluyen datos personales y notas', function () {
     t3_config_ia();
     t3_limpiar_uso();
-    usuario_prueba();
-    $cliente = t3_crear_cliente('Julián Gómez', '3001234567', 'Medellín', 'hipertensión');
-    $caso = t3_crear_caso($cliente['id'], 'Proceso de Julián Gómez');
+    $usuario = usuario_prueba();
+    $cliente = t3_crear_cliente('Julián Gómez', '0001234567', 'Ciudad de prueba', 'Condición de prueba');
+    $caso = t3_crear_caso($cliente['id'], 'Proceso de Julián GOMEZ');
+    db()->prepare('UPDATE casos SET objetivo = ? WHERE id = ?')->execute(['Objetivo privado', $caso]);
     t3_crear_plan($caso, $cliente);
     t3_crear_seguimiento($caso, $cliente);
 
@@ -108,28 +118,43 @@ prueba('lo enviado a la IA no lleva nombre, teléfono, ciudad ni condiciones: so
         return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Cliente 1 va bien.'])];
     };
 
-    lia_responder(usuario_actual() ?? [], '¿Cómo va Julián Gómez con su proceso?', []);
-    lia_responder(usuario_actual() ?? [], '¿Y Julián?', []);
+    $primera = lia_responder($usuario, '¿Cómo va Julián Gómez? Contacto: julian.gomez@ejemplo.test, 0007654321.', []);
+    igual('Julián va bien.', $primera['respuesta']);
+    igual([
+        'Tú: ¿Cómo va Cliente 1? Contacto: [correo], [número].',
+        'Lía: Cliente 1 va bien.',
+    ], $_SESSION['lia_historial']);
+    lia_responder($usuario, '¿Y su último control?', $_SESSION['lia_historial']);
     unset($GLOBALS['IA_FALSA']);
 
-    verdadero($enviado !== [], 'debía llamar a la IA');
-    $todo = (string) json_encode($enviado, JSON_UNESCAPED_UNICODE);
-    contiene('Cliente 1', $todo, 'debía ir el alias');
-    verdadero(!str_contains($todo, 'Julián'), 'no debe ir el nombre');
-    verdadero(!str_contains($todo, 'Gómez'), 'no debe ir el apellido');
-    verdadero(!str_contains($todo, '3001234567'), 'no debe ir el teléfono');
-    verdadero(!str_contains($todo, 'Medellín'), 'no debe ir la ciudad');
-    verdadero(!str_contains($todo, 'hipertensión'), 'no deben ir las condiciones');
-    verdadero(!str_contains($todo, '1990-05-04'), 'no debe ir la fecha de nacimiento');
-    contiene('Retatrutide', $todo, 'sí deben ir los ítems del plan');
-    contiene('85.2', $todo, 'sí deben ir los seguimientos');
+    igual(2, count($enviado));
+    foreach ($enviado as $payload) {
+        $todo = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        contiene('Cliente 1', $todo);
+        foreach (['Julián', 'Gómez', 'GOMEZ', $cliente['telefono'], $cliente['correo'], 'Ciudad de prueba',
+                  'Condición de prueba', '1990-05-04', 'julian.gomez@ejemplo.test', '0007654321',
+                  'Objetivo privado', 'Indicaciones privadas', 'Motivo privado', 'Nota de ítem privada',
+                  'Efectos privados', 'Nota de seguimiento privada', 'Producto libre', 'Copia del nombre'] as $privado) {
+            verdadero(!str_contains($todo, $privado), 'el payload no debe incluir ' . $privado);
+        }
+    }
+    $primeraPregunta = $enviado[0]['messages'][1]['content'];
+    contiene('Proceso de Cliente 1', $primeraPregunta);
+    contiene('Producto de catálogo', $primeraPregunta);
+    contiene('"plan_actual":{"version":1,"fecha":"', $primeraPregunta);
+    contiene('85.2', $primeraPregunta);
+    contiene('[correo], [número]', $primeraPregunta);
+    $segundaPregunta = $enviado[1]['messages'][1]['content'];
+    contiene('Conversación reciente:', $segundaPregunta);
+    contiene('Tú: ¿Cómo va Cliente 1? Contacto: [correo], [número].', $segundaPregunta);
+    contiene('Lía: Cliente 1 va bien.', $segundaPregunta);
 });
 
 prueba('el alias se cambia por el primer nombre en la respuesta', function () {
     t3_config_ia();
     t3_limpiar_uso();
     usuario_prueba();
-    $cliente = t3_crear_cliente('Mariana Restrepo', '3019876543');
+    $cliente = t3_crear_cliente('Mariana Restrepo', '0009876543');
     t3_crear_caso($cliente['id'], 'Proceso de bienestar');
 
     $GLOBALS['IA_FALSA'] = function () use ($cliente) {
@@ -153,7 +178,7 @@ prueba('la URL la arma el servidor: buscar y abrir caso; una URL inventada se ig
     t3_config_ia();
     t3_limpiar_uso();
     usuario_prueba();
-    $cliente = t3_crear_cliente('Camila Ospina', '3025557788');
+    $cliente = t3_crear_cliente('Camila Ospina', '0005557788');
     $caso = t3_crear_caso($cliente['id'], 'Proceso de fuerza');
 
     $GLOBALS['IA_FALSA'] = function () {
@@ -245,28 +270,44 @@ prueba('si el modelo rechaza el esquema se reintenta con json_object', function 
     igual(['json_schema', 'json_object'], $formatos, 'debía reintentar sin esquema');
 });
 
-prueba('el límite diario corta antes de llamar a la IA', function () {
+prueba('un JSON sin respuesta se registra como fallo y pasa al siguiente proveedor', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    $usuario = usuario_prueba();
+    $GLOBALS['IA_FALSA'] = function ($proveedor) {
+        $datos = json_decode(t3_json(), true);
+        if ($proveedor === 'gemini') {
+            unset($datos['respuesta']);
+        }
+        return ['ok' => true, 'codigo' => 200, 'contenido' => json_encode($datos)];
+    };
+    $r = lia_responder($usuario, 'Hola', []);
+    unset($GLOBALS['IA_FALSA']);
+    igual('Listo.', $r['respuesta']);
+    igual([0, 1], array_map('intval', db()->query('SELECT ok FROM ia_uso ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)));
+});
+
+prueba('el límite diario cuenta fallos e impide reintentar y llamar otra vez', function () {
     t3_config_ia(1);
     t3_limpiar_uso();
     usuario_prueba();
-    db()->prepare('INSERT INTO ia_uso (usuario_id, funcion, modelo, ok, tokens_entrada, tokens_salida, detalle, fecha)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        ->execute([null, 'prueba', 'gemini/modelo-gemini', 1, 1, 1, null, ahora()]);
-
-    $llamada = false;
-    $GLOBALS['IA_FALSA'] = function () use (&$llamada) {
-        $llamada = true;
-        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json()];
+    $intentos = 0;
+    $GLOBALS['IA_FALSA'] = function () use (&$intentos) {
+        $intentos++;
+        return ['ok' => false, 'codigo' => 400, 'detalle' => 'esquema no soportado'];
     };
 
-    $mensaje = '';
-    try {
-        ia_consultar('prueba', 'sistema', 'texto', ['type' => 'object']);
-    } catch (RuntimeException $ex) {
-        $mensaje = $ex->getMessage();
+    for ($i = 0; $i < 2; $i++) {
+        $mensaje = '';
+        try {
+            ia_consultar('prueba', 'sistema', 'texto', lia_esquema());
+        } catch (RuntimeException $ex) {
+            $mensaje = $ex->getMessage();
+        }
+        igual('Se agotó por hoy el uso de la IA', $mensaje);
     }
     unset($GLOBALS['IA_FALSA']);
 
-    igual('Se agotó por hoy el uso de la IA', $mensaje);
-    verdadero(!$llamada, 'no debía llamar a la IA al llegar al límite');
+    igual(1, $intentos);
+    igual([0], array_map('intval', db()->query('SELECT ok FROM ia_uso ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)));
 });

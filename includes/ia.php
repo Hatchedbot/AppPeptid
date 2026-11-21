@@ -38,11 +38,7 @@ function ia_disponible(): bool
 function ia_consultar(string $funcion, string $sistema, string $texto, array $esquema): array
 {
     $limite = (int) config('ia.limite_diario', 200);
-    $st = db()->prepare('SELECT COUNT(*) FROM ia_uso WHERE ok = 1 AND fecha >= ?');
-    $st->execute([hoy() . ' 00:00:00']);
-    if ((int) $st->fetchColumn() >= $limite) {
-        throw new RuntimeException('Se agotó por hoy el uso de la IA');
-    }
+    $st = db()->prepare('SELECT COUNT(*) FROM ia_uso WHERE fecha >= ? AND fecha < ?');
 
     $orden = config('ia.orden', []);
     $proveedores = config('ia.proveedores', []);
@@ -71,12 +67,18 @@ function ia_consultar(string $funcion, string $sistema, string $texto, array $es
 
             // Primero se intenta con el esquema; si el modelo lo rechaza (400), se repite con json_object.
             foreach (['esquema', 'json'] as $modo) {
+                $inicio = new DateTimeImmutable(hoy());
+                $st->execute([$inicio->format('Y-m-d H:i:s'), $inicio->modify('+1 day')->format('Y-m-d H:i:s')]);
+                if ((int) $st->fetchColumn() >= $limite) {
+                    throw new RuntimeException('Se agotó por hoy el uso de la IA');
+                }
+
                 $payload = ia_payload($modelo, $sistema, $texto, $esquema, $modo);
                 $r = ia_peticion((string) $nombre, $modelo, $url, $clave, $payload, $falsa);
 
                 $datos = null;
                 if ($r['ok']) {
-                    $datos = ia_decodificar($r['contenido']);
+                    $datos = ia_decodificar($r['contenido'], $esquema);
                 }
 
                 if ($datos !== null) {
@@ -84,7 +86,7 @@ function ia_consultar(string $funcion, string $sistema, string $texto, array $es
                     return $datos;
                 }
 
-                $detalle = $r['ok'] ? 'La respuesta no vino en JSON válido' : $r['detalle'];
+                $detalle = $r['ok'] ? 'La respuesta no cumple el esquema JSON' : $r['detalle'];
                 ia_registrar($funcion, $etiqueta, false, $r['tokens_entrada'], $r['tokens_salida'], $detalle);
 
                 if ($r['codigo'] === 401 || $r['codigo'] === 403) {
@@ -163,6 +165,10 @@ function ia_peticion(string $proveedor, string $modelo, string $url, string $cla
     }
 
     $ch = curl_init($url);
+    if ($ch === false) {
+        return ['ok' => false, 'contenido' => '', 'codigo' => 0, 'tokens_entrada' => 0,
+                'tokens_salida' => 0, 'detalle' => 'No se pudo iniciar cURL'];
+    }
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
@@ -200,31 +206,31 @@ function ia_peticion(string $proveedor, string $modelo, string $url, string $cla
     ];
 }
 
-/** Decodifica la respuesta JSON de la IA. Acepta el objeto directo o envuelto en texto. */
-function ia_decodificar(string $contenido): ?array
+/** Valida el objeto JSON y los campos requeridos por el esquema de respuesta. */
+function ia_decodificar(string $contenido, array $esquema): ?array
 {
-    $contenido = trim($contenido);
-    if ($contenido === '') {
+    $objeto = json_decode($contenido);
+    if (!$objeto instanceof stdClass) {
         return null;
     }
-    $datos = json_decode($contenido, true);
-    if (is_array($datos)) {
-        return $datos;
-    }
-    // A veces el modelo envuelve el JSON en ```json ... ``` o agrega texto alrededor.
-    if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/si', $contenido, $m)) {
-        $datos = json_decode($m[1], true);
-        if (is_array($datos)) {
-            return $datos;
+
+    $datos = (array) $objeto;
+    foreach ($esquema['required'] ?? [] as $campo) {
+        $valor = $datos[$campo] ?? null;
+        $regla = $esquema['properties'][$campo] ?? [];
+        $tipoCorrecto = match ($regla['type'] ?? null) {
+            'string' => is_string($valor),
+            'integer' => is_int($valor),
+            default => array_key_exists($campo, $datos),
+        };
+        if (!$tipoCorrecto || (isset($regla['enum']) && !in_array($valor, $regla['enum'], true))) {
+            return null;
         }
     }
-    if (preg_match('/(\{.*\})/s', $contenido, $m)) {
-        $datos = json_decode($m[1], true);
-        if (is_array($datos)) {
-            return $datos;
-        }
+    if (isset($datos['respuesta']) && (!is_string($datos['respuesta']) || trim($datos['respuesta']) === '')) {
+        return null;
     }
-    return null;
+    return $datos;
 }
 
 /** Anota el intento en ia_uso (también los fallidos). */
@@ -253,17 +259,17 @@ function lia_responder(array $usuario, string $texto, array $historial): array
 {
     $texto = trim($texto);
     $busqueda = lia_buscar_clientes($texto);
-    $clientes = $busqueda['completos'];
-    $ids = array_map(fn($c) => (int) $c['id'], $clientes);
-    $parciales = array_values(array_filter($busqueda['parciales'], fn($c) => !in_array((int) $c['id'], $ids, true)));
+    $aliases = $historial === [] ? [] : ($_SESSION['lia_aliases'] ?? []);
+    $mencionados = array_merge($busqueda['completos'], $busqueda['parciales']);
+    foreach ($mencionados as &$cliente) {
+        $cliente['alias'] = $aliases[$cliente['id']] ??= 'Cliente ' . (count($aliases) + 1);
+    }
+    unset($cliente);
+    $clientes = array_slice($mencionados, 0, min(5, count($busqueda['completos'])));
     $contexto = lia_contexto($clientes);
     $resumen = lia_resumen();
 
-    // La pregunta también viaja a la IA: los nombres se cambian por el alias.
-    $preguntaVisible = lia_ocultar_nombres($texto, $clientes);
-    if ($parciales !== []) {
-        $preguntaVisible = lia_ocultar_nombres($preguntaVisible, $parciales, false);
-    }
+    $preguntaVisible = lia_ocultar_nombres($texto, $mencionados);
     $pregunta = "Pregunta del equipo: {$preguntaVisible}\n\n"
         . 'Resumen general (sin nombres): ' . json_encode($resumen, JSON_UNESCAPED_UNICODE) . "\n\n"
         . 'Clientes encontrados en la base local: ' . json_encode($contexto, JSON_UNESCAPED_UNICODE);
@@ -273,18 +279,23 @@ function lia_responder(array $usuario, string $texto, array $historial): array
 
     $charla = lia_historial_texto($historial);
     if ($charla !== '') {
-        $charla = lia_ocultar_nombres($charla, $clientes);
-        $otras = lia_buscar_clientes($charla);
-        $ajenos = array_merge($otras['completos'], $otras['parciales']);
-        $idsTexto = array_map(fn($c) => (int) $c['id'], $clientes);
-        $ajenos = array_values(array_filter($ajenos, fn($c) => !in_array((int) $c['id'], $idsTexto, true)));
-        if ($ajenos !== []) {
-            $charla = lia_ocultar_nombres($charla, $ajenos, false);
-        }
         $pregunta .= "\n\nConversación reciente:\n" . $charla;
     }
 
     $datos = ia_consultar('lia', lia_sistema(), $pregunta, lia_esquema());
+    $mencionadosRespuesta = lia_buscar_clientes($datos['respuesta']);
+    $clientesRespuesta = array_merge($mencionadosRespuesta['completos'], $mencionadosRespuesta['parciales']);
+    foreach ($clientesRespuesta as &$cliente) {
+        $cliente['alias'] = $aliases[$cliente['id']] ?? 'un cliente';
+    }
+    unset($cliente);
+    $respuestaVisible = lia_ocultar_nombres($datos['respuesta'], $clientesRespuesta);
+    $_SESSION['lia_aliases'] = $aliases;
+    $_SESSION['lia_historial'] = array_slice([
+        ...$historial,
+        'Tú: ' . $preguntaVisible,
+        'Lía: ' . $respuestaVisible,
+    ], -6);
     return lia_preparar_respuesta($datos, $clientes);
 }
 
@@ -329,7 +340,7 @@ function lia_esquema(): array
  */
 function lia_clientes_mencionados(string $texto): array
 {
-    return lia_buscar_clientes($texto)['completos'];
+    return array_slice(lia_buscar_clientes($texto)['completos'], 0, 5);
 }
 
 /**
@@ -356,7 +367,8 @@ function lia_buscar_clientes(string $texto): array
     foreach ($st->fetchAll() as $cliente) {
         $nombre = (string) $cliente['nombre'];
         $suyas = [];
-        foreach (preg_split('/\s+/u', lia_normalizar($nombre)) ?: [] as $palabra) {
+        preg_match_all('/[a-z0-9]+/', lia_normalizar($nombre), $partesNombre);
+        foreach ($partesNombre[0] as $palabra) {
             if (mb_strlen($palabra) >= 3) {
                 $suyas[] = $palabra;
             }
@@ -372,9 +384,6 @@ function lia_buscar_clientes(string $texto): array
         }
         if ($coinciden === count($suyas)) {
             $completos[] = $cliente;
-            if (count($completos) >= 5) {
-                break;
-            }
         } elseif ($coinciden > 0) {
             $parciales[] = $cliente;
         }
@@ -403,8 +412,8 @@ function lia_normalizar(string $texto): string
 function lia_contexto(array $clientes): array
 {
     $salida = [];
-    foreach (array_values($clientes) as $i => $cliente) {
-        $alias = 'Cliente ' . ($i + 1);
+    foreach ($clientes as $cliente) {
+        $alias = $cliente['alias'];
         $casos = [];
 
         $st = db()->prepare('SELECT id, titulo, estado, fecha_inicio, peso_inicial, peso_meta, proximo_contacto
@@ -412,33 +421,25 @@ function lia_contexto(array $clientes): array
         $st->execute([(int) $cliente['id']]);
         foreach ($st->fetchAll() as $caso) {
             $plan = null;
-            $stp = db()->prepare('SELECT id, version, indicaciones FROM planes WHERE caso_id = ?
+            $stp = db()->prepare('SELECT id, version, creado FROM planes WHERE caso_id = ?
                                   ORDER BY version DESC, id DESC LIMIT 1');
             $stp->execute([(int) $caso['id']]);
             $filaPlan = $stp->fetch();
             if ($filaPlan) {
-                $items = [];
-                $sti = db()->prepare('SELECT producto_nombre, dosis, frecuencia, duracion
-                                      FROM plan_items WHERE plan_id = ? ORDER BY orden, id');
+                $sti = db()->prepare('SELECT p.nombre AS producto, i.dosis, i.frecuencia, i.duracion
+                                      FROM plan_items i LEFT JOIN productos p ON p.id = i.producto_id
+                                      WHERE i.plan_id = ? ORDER BY i.orden, i.id');
                 $sti->execute([(int) $filaPlan['id']]);
-                foreach ($sti->fetchAll() as $item) {
-                    $items[] = [
-                        'producto' => lia_limpiar($item['producto_nombre'], $cliente),
-                        'dosis' => lia_limpiar($item['dosis'], $cliente),
-                        'frecuencia' => lia_limpiar($item['frecuencia'], $cliente),
-                        'duracion' => lia_limpiar($item['duracion'], $cliente),
-                    ];
-                }
                 $plan = [
                     'version' => (int) $filaPlan['version'],
-                    'indicaciones' => lia_limpiar($filaPlan['indicaciones'], $cliente),
-                    'items' => $items,
+                    'fecha' => $filaPlan['creado'],
+                    'items' => $sti->fetchAll(),
                 ];
             }
 
             $casos[] = [
                 'id' => (int) $caso['id'],
-                'titulo' => lia_limpiar($caso['titulo'], $cliente),
+                'titulo' => lia_ocultar_nombres($caso['titulo'], [$cliente]),
                 'estado' => (string) $caso['estado'],
                 'fecha_inicio' => (string) $caso['fecha_inicio'],
                 'peso_inicial' => $caso['peso_inicial'] === null ? null : (float) $caso['peso_inicial'],
@@ -449,7 +450,7 @@ function lia_contexto(array $clientes): array
         }
 
         $seguimientos = [];
-        $sts = db()->prepare('SELECT s.fecha, s.tipo, s.peso, s.cintura_cm, s.adherencia, s.efectos, s.nota
+        $sts = db()->prepare('SELECT s.fecha, s.tipo, s.peso, s.cintura_cm, s.adherencia
                               FROM seguimientos s JOIN casos c ON c.id = s.caso_id
                               WHERE c.cliente_id = ? ORDER BY s.fecha DESC, s.id DESC LIMIT 5');
         $sts->execute([(int) $cliente['id']]);
@@ -460,8 +461,6 @@ function lia_contexto(array $clientes): array
                 'peso' => $s['peso'] === null ? null : (float) $s['peso'],
                 'cintura_cm' => $s['cintura_cm'] === null ? null : (float) $s['cintura_cm'],
                 'adherencia' => $s['adherencia'],
-                'efectos' => lia_limpiar($s['efectos'], $cliente),
-                'nota' => lia_limpiar($s['nota'], $cliente),
             ];
         }
 
@@ -492,62 +491,31 @@ function lia_resumen(): array
     ];
 }
 
-/** Quita de un texto libre cualquier dato que identifique al cliente. */
-function lia_limpiar(?string $texto, array $cliente): string
+/** Enmascara correos y números largos antes de enviar o guardar texto del chat. */
+function lia_ocultar_contacto(string $texto): string
 {
-    $texto = (string) $texto;
-    if ($texto === '') {
-        return '';
-    }
-    $nombre = trim((string) ($cliente['nombre'] ?? ''));
-    if ($nombre !== '') {
-        $texto = (string) preg_replace('/' . preg_quote($nombre, '/') . '/iu', 'el cliente', $texto);
-        foreach (preg_split('/\s+/u', $nombre) ?: [] as $palabra) {
-            if (mb_strlen($palabra) >= 3) {
-                $texto = (string) preg_replace('/\b' . preg_quote($palabra, '/') . '\b/iu', '', $texto);
-            }
-        }
-    }
-    $telefono = trim((string) ($cliente['telefono'] ?? ''));
-    if ($telefono !== '') {
-        $texto = str_replace($telefono, '', $texto);
-        $digitos = preg_replace('/\D/', '', $telefono);
-        if (strlen((string) $digitos) >= 7) {
-            $texto = (string) preg_replace('/(?<!\d)' . preg_quote((string) $digitos, '/') . '(?!\d)/', '', $texto);
-        }
-    }
-    return trim((string) preg_replace('/\s+/u', ' ', $texto));
+    $texto = (string) preg_replace('/[^\s@<>(),;:]+@[^\s@<>(),;:.]+(?:\.[\p{L}\p{N}-]+)+/u', '[correo]', $texto);
+    return (string) preg_replace('/\d{7,}/u', '[número]', $texto);
 }
 
-/**
- * Cambia en un texto libre las palabras que forman el nombre del cliente por un alias
- * (o por «un cliente»). También quita su teléfono.
- */
-function lia_ocultar_nombres(string $texto, array $clientes, bool $conAlias = true): string
+/** Sustituye los nombres mencionados y enmascara los teléfonos conocidos con formato. */
+function lia_ocultar_nombres(string $texto, array $clientes): string
 {
-    foreach (array_values($clientes) as $i => $cliente) {
-        $reemplazo = $conAlias ? 'Cliente ' . ($i + 1) : 'un cliente';
-        $palabras = [];
-        foreach (preg_split('/\s+/u', (string) ($cliente['nombre'] ?? '')) ?: [] as $palabra) {
-            $normal = lia_normalizar($palabra);
-            if (mb_strlen($normal) >= 3) {
-                $palabras[$normal] = true;
-            }
+    $palabras = [];
+    foreach ($clientes as $cliente) {
+        preg_match_all('/\p{L}+/u', $cliente['nombre'], $partes);
+        foreach ($partes[0] as $palabra) {
+            $palabras[lia_normalizar($palabra)] ??= $cliente['alias'];
         }
-        if ($palabras !== []) {
-            $texto = (string) preg_replace_callback('/[\p{L}\p{N}]+/u', function ($m) use ($palabras, $reemplazo) {
-                return isset($palabras[lia_normalizar($m[0])]) ? $reemplazo : $m[0];
-            }, $texto);
-        }
-        $telefono = trim((string) ($cliente['telefono'] ?? ''));
-        if ($telefono !== '') {
-            $texto = str_replace($telefono, '', $texto);
-            $digitos = (string) preg_replace('/\D/', '', $telefono);
-            if (strlen($digitos) >= 7) {
-                $texto = (string) preg_replace('/(?<!\d)' . preg_quote($digitos, '/') . '(?!\d)/', '', $texto);
-            }
+        if ($cliente['telefono'] !== '') {
+            $texto = str_replace($cliente['telefono'], '[número]', $texto);
         }
     }
+    $texto = (string) preg_replace_callback(
+        '/\bCliente \d+\b|\[(?:correo|número)\]|\p{L}+/iu',
+        fn($m) => $palabras[lia_normalizar($m[0])] ?? $m[0],
+        lia_ocultar_contacto($texto)
+    );
     return trim((string) preg_replace('/(Cliente \d+)(?:\s+\1)+/u', '$1', $texto));
 }
 
@@ -556,9 +524,6 @@ function lia_historial_texto(array $historial): string
 {
     $lineas = [];
     foreach (array_slice($historial, -6) as $linea) {
-        if (is_array($linea)) {
-            $linea = (string) ($linea['texto'] ?? $linea['contenido'] ?? '');
-        }
         $linea = trim((string) $linea);
         if ($linea !== '') {
             $lineas[] = mb_substr($linea, 0, 300);
@@ -584,17 +549,14 @@ function lia_preparar_respuesta(array $datos, array $clientes): array
     }
 
     $porAlias = [];
-    foreach (array_values($clientes) as $i => $cliente) {
-        $porAlias[mb_strtolower('Cliente ' . ($i + 1))] = $cliente;
+    foreach ($clientes as $cliente) {
+        $porAlias[mb_strtolower($cliente['alias'])] = $cliente;
     }
 
-    // Primero los alias largos, para no romper «Cliente 1» dentro de «Cliente 10».
-    $alias = array_keys($porAlias);
-    usort($alias, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
-    foreach ($alias as $textoAlias) {
-        $cliente = $porAlias[$textoAlias];
-        $respuesta = str_ireplace($textoAlias, primer_nombre((string) $cliente['nombre']), $respuesta);
-    }
+    $respuesta = (string) preg_replace_callback('/\bCliente \d+\b/iu', function ($m) use ($porAlias) {
+        $cliente = $porAlias[mb_strtolower($m[0])] ?? null;
+        return $cliente === null ? $m[0] : primer_nombre($cliente['nombre']);
+    }, $respuesta);
 
     $url = '';
     switch ($accion) {

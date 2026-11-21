@@ -12,8 +12,8 @@
   estilo.textContent = [
     '#lia-raiz [hidden]{display:none !important}',
     '.lia-flotante{position:fixed;right:16px;bottom:16px;z-index:60;width:60px;height:60px;border-radius:50%;',
-    '  border:0;background:var(--primario);color:#fff;font:600 15px/1 var(--fuente);cursor:pointer;',
-    '  box-shadow:0 6px 18px rgba(16,24,40,.22);min-height:44px}',
+    '  border:0;background:var(--primario);color:var(--superficie);font:600 15px/1 var(--fuente);cursor:pointer;',
+    '  box-shadow:var(--sombra);min-height:44px}',
     '.lia-flotante:hover{background:var(--primario-hover)}',
     '.lia-panel{position:fixed;right:16px;bottom:88px;z-index:61;display:flex;flex-direction:column;',
     '  width:min(370px,calc(100vw - 32px));max-height:min(70vh,560px);background:var(--superficie);',
@@ -29,18 +29,18 @@
     '  background:var(--fondo);min-height:150px}',
     '.lia-msg{max-width:92%;padding:.55rem .7rem;border-radius:10px;white-space:pre-wrap;word-wrap:break-word}',
     '.lia-msg p{margin:0}',
-    '.lia-yo{align-self:flex-end;background:var(--primario);color:#fff}',
+    '.lia-yo{align-self:flex-end;background:var(--primario);color:var(--superficie)}',
     '.lia-lia{align-self:flex-start;background:var(--superficie);border:1px solid var(--borde)}',
     '.lia-acciones{padding:0 .75rem .55rem;background:var(--fondo)}',
     '.lia-abrir{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.5rem .9rem;',
-    '  border-radius:10px;background:var(--primario);color:#fff;font-weight:600;text-decoration:none}',
+    '  border-radius:10px;background:var(--primario);color:var(--superficie);font-weight:600;text-decoration:none}',
     '.lia-form{display:grid;grid-template-columns:1fr auto;gap:.4rem;padding:.6rem .75rem;',
     '  border-top:1px solid var(--borde);background:var(--superficie)}',
     '.lia-campo{grid-column:1 / -1;width:100%;min-height:44px;padding:.55rem .65rem;border:1px solid var(--borde);',
-    '  border-radius:10px;font:inherit;color:var(--texto);background:#fff}',
+    '  border-radius:10px;font:inherit;color:var(--texto);background:var(--superficie)}',
     '.lia-campo:focus{outline:2px solid var(--primario);outline-offset:1px}',
     '.lia-boton{min-height:44px;padding:.5rem .8rem;border:1px solid transparent;border-radius:10px;',
-    '  background:var(--primario);color:#fff;font:600 .95rem/1 var(--fuente);cursor:pointer}',
+    '  background:var(--primario);color:var(--superficie);font:600 .95rem/1 var(--fuente);cursor:pointer}',
     '.lia-boton:hover{background:var(--primario-hover)}',
     '.lia-boton[disabled]{opacity:.6;cursor:default}',
     '.lia-boton-sec{background:var(--superficie);color:var(--acento);border-color:var(--borde)}',
@@ -138,7 +138,6 @@
   var hablar = true;
   var reconociendo = false;
   var ocupado = false;
-  var historial = [];
   var tieneVoz = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function';
   var Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
   var reconocedor = null;
@@ -177,12 +176,6 @@
     } catch (ignorado) { /* voz no disponible */ }
   }
 
-  function recortarHistorial() {
-    while (historial.length > 6) {
-      historial.shift();
-    }
-  }
-
   function agregar(texto, de) {
     var fila = document.createElement('div');
     fila.className = 'lia-msg ' + (de === 'yo' ? 'lia-yo' : 'lia-lia');
@@ -215,8 +208,6 @@
   function responderError() {
     var texto = 'No pude conectarme. Revisa tu conexión e inténtalo de nuevo.';
     agregar(texto, 'lia');
-    historial.push('Lía: ' + texto);
-    recortarHistorial();
     estado.textContent = '';
   }
 
@@ -228,17 +219,13 @@
     campo.value = '';
     mostrarEnlace('');
     agregar(texto, 'yo');
-    historial.push('Tú: ' + texto);
-    recortarHistorial();
     ocupar(true);
 
-    window.enviarJSON('api/lia.php', { texto: texto, historial: historial.slice() }).then(function (r) {
+    window.enviarJSON('api/lia.php', { texto: texto }).then(function (r) {
       var respuesta = r && typeof r.respuesta === 'string' && r.respuesta.trim() !== ''
         ? r.respuesta.trim()
         : 'No pude responder ahora. Inténtalo de nuevo.';
       agregar(respuesta, 'lia');
-      historial.push('Lía: ' + respuesta);
-      recortarHistorial();
       mostrarEnlace(r && typeof r.url === 'string' ? r.url : '');
       decir(respuesta);
       ocupar(false);
