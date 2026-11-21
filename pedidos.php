@@ -3,10 +3,11 @@ require __DIR__ . '/includes/app.php';
 require_once __DIR__ . '/includes/pedidos.php';
 
 requerir_permiso('pedidos');
-$estado = (string) ($_GET['estado'] ?? '');
-$pago = (string) ($_GET['estado_pago'] ?? '');
+$estado = filter_input(INPUT_GET, 'estado') ?: '';
+$estado = isset(PEDIDO_ESTADOS[$estado]) ? $estado : '';
+$pago = filter_input(INPUT_GET, 'estado_pago') ?: '';
 $filtros = [
-    'q' => trim((string) ($_GET['q'] ?? '')),
+    'q' => trim(filter_input(INPUT_GET, 'q') ?? ''),
     'estado_pago' => isset(PEDIDO_ESTADOS_PAGO[$pago]) ? $pago : '',
     'cliente_id' => max(0, (int) ($_GET['cliente_id'] ?? 0)),
 ];

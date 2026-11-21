@@ -310,7 +310,7 @@ function pedidos_listar(array $filtros = []): array
 
 function pedido_por_token(string $token): ?array
 {
-    if (!preg_match('/\A[a-f0-9]{32,40}\z/', $token)) {
+    if (!preg_match('/\A(?:[a-f0-9]{32}|[a-f0-9]{40})\z/', $token)) {
         return null;
     }
     $pedido = pedido_consulta('SELECT p.id, p.total, p.estado, p.transportadora, p.guia, c.nombre

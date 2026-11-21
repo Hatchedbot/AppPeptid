@@ -12,25 +12,34 @@ $url = $nuevo ? 'pedido.php?nuevo=1&cliente=' . $cliente : 'pedido.php?id=' . $i
 $url_formulario = $url . ($editar ? '&editar=1' : '');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $entrada = array_filter($_POST, 'is_string');
+    unset($entrada['csrf']);
+    $items = $_POST['items'] ?? [];
+    if (is_array($items)) {
+        $entrada['items'] = array_map(
+            fn($item) => is_array($item) ? array_filter($item, 'is_string') : [],
+            array_values($items)
+        );
+    }
     try {
-        switch ($_POST['accion'] ?? '') {
+        switch ($entrada['accion'] ?? '') {
             case 'guardar':
-                $items = is_array($_POST['items'] ?? null) ? array_values($_POST['items']) : [];
+                $entrada['contraentrega'] = $entrada['contraentrega'] ?? 0;
+                $items = $entrada['items'] ?? [];
                 if ($nuevo) {
-                    $id = pedido_crear($_POST, $items);
+                    $id = pedido_crear($entrada, $items);
                     $url = 'pedido.php?id=' . $id;
                 } else {
-                    $_POST['contraentrega'] = $_POST['contraentrega'] ?? 0;
-                    pedido_actualizar($id, $_POST, $items);
+                    pedido_actualizar($id, $entrada, $items);
                 }
                 avisar('ok', 'Guardaste el pedido.');
                 break;
             case 'pago':
-                pago_agregar($id, $_POST);
+                pago_agregar($id, $entrada);
                 avisar('ok', 'Registraste el pago.');
                 break;
             case 'estado':
-                pedido_cambiar_estado($id, (string) ($_POST['estado'] ?? ''), $_POST);
+                pedido_cambiar_estado($id, $entrada['estado'] ?? '', $entrada);
                 avisar('ok', 'Actualizaste el estado del pedido.');
                 break;
             default:
@@ -39,7 +48,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         unset($_SESSION['pedido_borrador']);
         redirigir($url);
     } catch (InvalidArgumentException $ex) {
-        $_SESSION['pedido_borrador'] = ['url' => $url_formulario, 'datos' => $_POST];
+        $_SESSION['pedido_borrador'] = ['url' => $url_formulario, 'datos' => $entrada];
         avisar('error', $ex->getMessage());
         redirigir($url_formulario);
     }
