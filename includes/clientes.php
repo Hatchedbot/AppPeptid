@@ -100,8 +100,13 @@ function cliente_validar(array $datos, bool $exigir_consentimiento): array
     if (mb_strlen($ciudad) > 80) {
         throw new InvalidArgumentException('La ciudad no puede tener más de 80 caracteres.');
     }
-    if (mb_strlen($sexo) > 10) {
-        throw new InvalidArgumentException('El sexo no puede tener más de 10 caracteres.');
+    if ($sexo !== '' && !in_array($sexo, ['Femenino', 'Masculino', 'Otro'], true)) {
+        throw new InvalidArgumentException('Elige el sexo de la lista.');
+    }
+    foreach (['objetivo' => $objetivo, 'condiciones de salud' => $condiciones, 'notas' => $notas] as $etiqueta => $valor) {
+        if (mb_strlen($valor) > 5000) {
+            throw new InvalidArgumentException("El campo $etiqueta no puede tener más de 5.000 caracteres.");
+        }
     }
 
     if ($fecha_nacimiento !== '') {

@@ -47,9 +47,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($es_nuevo || $es_edicio
     $datos = [];
     foreach (['nombre', 'telefono', 'correo', 'ciudad', 'fecha_nacimiento', 'sexo', 'estatura_cm',
               'objetivo', 'condiciones', 'notas'] as $campo) {
-        $datos[$campo] = trim((string) ($_POST[$campo] ?? ''));
+        $valor = $_POST[$campo] ?? '';
+        $datos[$campo] = is_string($valor) ? trim($valor) : '';
     }
-    $datos['consentimiento'] = !empty($_POST['consentimiento']);
+    $datos['consentimiento'] = ($_POST['consentimiento'] ?? '') === '1';
 
     try {
         if ($es_nuevo) {
