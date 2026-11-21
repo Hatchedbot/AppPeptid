@@ -54,9 +54,14 @@ tests/run.php + tests/test_<modulo>.php
 | # | Tarea | Agente | Estado |
 |---|---|---|---|
 | 0 | Base: arranque, BD y migraciones, sesión/CSRF/permisos, entrada, inicio, estilos, pruebas | Claude (líder) | Hecha |
-| 1 | Clientes: lista con buscador, ficha, crear/editar, consentimiento, historial | OpenCode (DeepSeek V4.1 Flash) | En curso (rama `Hatchedbot/t1-clientes`) |
-| 2 | Casos, planes versionados, seguimientos, enlace público y WhatsApp | OpenCode (MiMo V2.6 Flash), relevo de Kilo | En curso (rama `Hatchedbot/t2-casos`) |
-| 3 | Lía: módulo de IA con respaldo y asistente por texto/voz | OpenCode (DeepSeek V4.1 Flash), relevo de Devin | En curso (rama `Hatchedbot/t3-lia`) |
+| 1 | Clientes: lista con buscador, ficha, crear/editar, consentimiento, historial | OpenCode (DeepSeek, luego Nemotron); revisó Codex | Hecha |
+| 2 | Casos, planes versionados, seguimientos, enlace público y WhatsApp | OpenCode (MiMo/Nemotron) a medias; lo terminó Codex | Hecha |
+| 3 | Lía: módulo de IA con respaldo y asistente por texto/voz | OpenCode (DeepSeek, luego Big Pickle); Codex corrigió la privacidad | Hecha |
+
+Pendientes vistos al probar (para la ronda 2): en `caso.php` los campos del ítem del plan no tienen el estilo
+ni las etiquetas de los demás, el selector de productos no está agrupado por categoría y los campos del
+formulario de nuevo caso no tienen etiqueta accesible. Los modelos gratis de OpenCode se agotaron a mitad de
+tarea (comparten cuota): para la ronda 2 conviene repartir entre agentes distintos.
 
 Kilo y Devin no arrancan desde las terminales de Orca (Git Bash no encuentra `kilo.cmd` ni `devin.cmd`), así que
 sus tareas pasaron a OpenCode el 2026-11-20.
