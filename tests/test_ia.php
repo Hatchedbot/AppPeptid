@@ -1,0 +1,313 @@
+<?php
+/**
+ * Pruebas de Lía (T3). Usan IA_FALSA: nunca llaman a internet ni usan claves reales.
+ */
+require_once dirname(__DIR__) . '/includes/ia.php';
+
+function t3_config_ia(int $limite = 50): void
+{
+    $GLOBALS['CONFIG']['ia'] = [
+        'limite_diario' => $limite,
+        'orden' => ['gemini', 'groq'],
+        'proveedores' => [
+            'gemini' => [
+                'url' => 'https://ia.invalida/gemini',
+                'clave' => '',
+                'modelos' => ['modelo-gemini'],
+            ],
+            'groq' => [
+                'url' => 'https://ia.invalida/groq',
+                'clave' => '',
+                'modelos' => ['modelo-groq'],
+            ],
+        ],
+    ];
+}
+
+function t3_limpiar_uso(): void
+{
+    db()->exec('DELETE FROM ia_uso');
+    unset($_SESSION['lia_historial'], $_SESSION['lia_aliases']);
+}
+
+function t3_crear_cliente(string $nombre, string $telefono, string $ciudad = 'Bogotá', string $condiciones = ''): array
+{
+    $correo = 'persona@ejemplo.test';
+    db()->prepare('INSERT INTO clientes (nombre, telefono, correo, ciudad, fecha_nacimiento, condiciones, creado, actualizado)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$nombre, $telefono, $correo, $ciudad, '1990-05-04', $condiciones, ahora(), ahora()]);
+    return ['id' => (int) db()->lastInsertId(), 'nombre' => $nombre, 'telefono' => $telefono, 'correo' => $correo];
+}
+
+function t3_crear_caso(int $clienteId, string $titulo, string $estado = 'activo'): int
+{
+    db()->prepare('INSERT INTO casos (cliente_id, titulo, estado, fecha_inicio, peso_inicial, peso_meta,
+                   proximo_contacto, creado, actualizado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$clienteId, $titulo, $estado, '2026-10-01', 88.5, 76.0, hoy(), ahora(), ahora()]);
+    return (int) db()->lastInsertId();
+}
+
+function t3_crear_plan(int $casoId, array $cliente): int
+{
+    $contacto = $cliente['correo'] . ' ' . $cliente['telefono'];
+    db()->prepare('INSERT INTO planes (caso_id, version, indicaciones, motivo_cambio, token, creado)
+                   VALUES (?, ?, ?, ?, ?, ?)')
+        ->execute([$casoId, 1, 'Indicaciones privadas ' . $contacto, 'Motivo privado ' . $contacto,
+                   token_aleatorio(12), ahora()]);
+    $planId = (int) db()->lastInsertId();
+    db()->exec("INSERT INTO productos (nombre, presentacion, categoria)
+                VALUES ('Producto de catálogo', 'Prueba', 'Prueba')");
+    $productoId = (int) db()->lastInsertId();
+    $item = db()->prepare('INSERT INTO plan_items (plan_id, producto_id, producto_nombre, dosis, frecuencia, duracion, notas, orden)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $item->execute([$planId, $productoId, 'Copia del nombre', 'Dosis de prueba', 'Semanal', '8 semanas',
+                    'Nota de ítem privada ' . $contacto, 0]);
+    $item->execute([$planId, null, 'Producto libre ' . $contacto, null, null, null, null, 1]);
+    return $planId;
+}
+
+function t3_crear_seguimiento(int $casoId, array $cliente): int
+{
+    $contacto = $cliente['correo'] . ' ' . $cliente['telefono'];
+    db()->prepare('INSERT INTO seguimientos (caso_id, fecha, tipo, peso, cintura_cm, adherencia, efectos, nota, creado)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$casoId, hoy(), 'control', 85.2, 90.0, 'completa', 'Efectos privados ' . $contacto,
+                   'Nota de seguimiento privada ' . $contacto, ahora()]);
+    return (int) db()->lastInsertId();
+}
+
+/** Respuesta JSON de la IA falsa. */
+function t3_json(array $campos = []): string
+{
+    return (string) json_encode(array_merge([
+        'respuesta' => 'Listo.',
+        'accion' => 'ninguna',
+        'cliente_alias' => '',
+        'caso_id' => 0,
+        'busqueda' => '',
+        'destino' => '',
+    ], $campos), JSON_UNESCAPED_UNICODE);
+}
+
+prueba('ia_disponible: sin claves es falso; con IA falsa es verdadero', function () {
+    unset($GLOBALS['IA_FALSA']);
+    $GLOBALS['CONFIG']['ia'] = [
+        'orden' => ['gemini'],
+        'proveedores' => ['gemini' => ['url' => 'https://ia.invalida', 'clave' => '', 'modelos' => ['m']]],
+    ];
+    verdadero(!ia_disponible(), 'sin clave no está disponible');
+
+    $GLOBALS['IA_FALSA'] = fn() => ['ok' => true, 'contenido' => t3_json(), 'codigo' => 200];
+    verdadero(ia_disponible(), 'la IA falsa sí está disponible');
+    unset($GLOBALS['IA_FALSA']);
+});
+
+prueba('la pregunta, el contexto y el historial excluyen datos personales y notas', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    $usuario = usuario_prueba();
+    $cliente = t3_crear_cliente('Julián Gómez', '0001234567', 'Ciudad de prueba', 'Condición de prueba');
+    $caso = t3_crear_caso($cliente['id'], 'Proceso de Julián GOMEZ');
+    db()->prepare('UPDATE casos SET objetivo = ? WHERE id = ?')->execute(['Objetivo privado', $caso]);
+    t3_crear_plan($caso, $cliente);
+    t3_crear_seguimiento($caso, $cliente);
+
+    $enviado = [];
+    $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$enviado) {
+        $enviado[] = $payload;
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Cliente 1 va bien.'])];
+    };
+
+    $primera = lia_responder($usuario, '¿Cómo va Julián Gómez? Contacto: julian.gomez@ejemplo.test, 0007654321.', []);
+    igual('Julián va bien.', $primera['respuesta']);
+    igual([
+        'Tú: ¿Cómo va Cliente 1? Contacto: [correo], [número].',
+        'Lía: Cliente 1 va bien.',
+    ], $_SESSION['lia_historial']);
+    lia_responder($usuario, '¿Y su último control?', $_SESSION['lia_historial']);
+    unset($GLOBALS['IA_FALSA']);
+
+    igual(2, count($enviado));
+    foreach ($enviado as $payload) {
+        $todo = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        contiene('Cliente 1', $todo);
+        foreach (['Julián', 'Gómez', 'GOMEZ', $cliente['telefono'], $cliente['correo'], 'Ciudad de prueba',
+                  'Condición de prueba', '1990-05-04', 'julian.gomez@ejemplo.test', '0007654321',
+                  'Objetivo privado', 'Indicaciones privadas', 'Motivo privado', 'Nota de ítem privada',
+                  'Efectos privados', 'Nota de seguimiento privada', 'Producto libre', 'Copia del nombre'] as $privado) {
+            verdadero(!str_contains($todo, $privado), 'el payload no debe incluir ' . $privado);
+        }
+    }
+    $primeraPregunta = $enviado[0]['messages'][1]['content'];
+    contiene('Proceso de Cliente 1', $primeraPregunta);
+    contiene('Producto de catálogo', $primeraPregunta);
+    contiene('"plan_actual":{"version":1,"fecha":"', $primeraPregunta);
+    contiene('85.2', $primeraPregunta);
+    contiene('[correo], [número]', $primeraPregunta);
+    $segundaPregunta = $enviado[1]['messages'][1]['content'];
+    contiene('Conversación reciente:', $segundaPregunta);
+    contiene('Tú: ¿Cómo va Cliente 1? Contacto: [correo], [número].', $segundaPregunta);
+    contiene('Lía: Cliente 1 va bien.', $segundaPregunta);
+});
+
+prueba('el alias se cambia por el primer nombre en la respuesta', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    usuario_prueba();
+    $cliente = t3_crear_cliente('Mariana Restrepo', '0009876543');
+    t3_crear_caso($cliente['id'], 'Proceso de bienestar');
+
+    $GLOBALS['IA_FALSA'] = function () use ($cliente) {
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+            'respuesta' => 'Cliente 1 va estable y tiene control pendiente.',
+            'accion' => 'abrir_cliente',
+            'cliente_alias' => 'Cliente 1',
+            'url' => 'https://sitio-inventado.example/cliente',
+        ])];
+    };
+    $r = lia_responder(usuario_actual() ?? [], '¿Cómo va Mariana Restrepo?', []);
+    unset($GLOBALS['IA_FALSA']);
+
+    igual('Mariana va estable y tiene control pendiente.', $r['respuesta']);
+    igual('abrir_cliente', $r['accion']);
+    igual('cliente.php?id=' . $cliente['id'], $r['url'], 'la URL la arma el servidor');
+    verdadero(!str_contains((string) json_encode($r), 'sitio-inventado'), 'la URL de la IA se ignora');
+});
+
+prueba('la URL la arma el servidor: buscar y abrir caso; una URL inventada se ignora', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    usuario_prueba();
+    $cliente = t3_crear_cliente('Camila Ospina', '0005557788');
+    $caso = t3_crear_caso($cliente['id'], 'Proceso de fuerza');
+
+    $GLOBALS['IA_FALSA'] = function () {
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+            'respuesta' => 'Te muestro los clientes que coinciden.',
+            'accion' => 'buscar',
+            'busqueda' => 'Gómez',
+            'url' => 'https://malo.example/robo',
+        ])];
+    };
+    $r = lia_responder(usuario_actual() ?? [], 'Busca Gómez', []);
+    igual('buscar', $r['accion']);
+    igual('clientes.php?q=G%C3%B3mez', $r['url']);
+    verdadero(!str_contains((string) json_encode($r), 'malo.example'), 'la URL inventada no se usa');
+
+    $GLOBALS['IA_FALSA'] = function () use ($caso) {
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+            'respuesta' => 'Abrí el caso.',
+            'accion' => 'abrir_caso',
+            'cliente_alias' => 'Cliente 1',
+            'caso_id' => $caso,
+            'url' => 'https://otro-inventado.example/x',
+        ])];
+    };
+    $r = lia_responder(usuario_actual() ?? [], 'Abre el caso de Camila Ospina', []);
+    igual('abrir_caso', $r['accion']);
+    igual('caso.php?id=' . $caso, $r['url']);
+    verdadero(!str_contains((string) json_encode($r), 'otro-inventado'), 'la URL inventada no se usa');
+
+    $GLOBALS['IA_FALSA'] = function () {
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+            'respuesta' => 'Ese caso no es de los clientes encontrados.',
+            'accion' => 'abrir_caso',
+            'cliente_alias' => 'Cliente 1',
+            'caso_id' => 999999,
+        ])];
+    };
+    $r = lia_responder(usuario_actual() ?? [], 'Abre un caso de Camila Ospina', []);
+    igual('ninguna', $r['accion'], 'un caso ajeno no se abre');
+    igual('', $r['url']);
+    unset($GLOBALS['IA_FALSA']);
+});
+
+prueba('si el primer proveedor falla se usa el segundo', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    usuario_prueba();
+
+    $vistos = [];
+    $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$vistos) {
+        $vistos[] = $proveedor . '/' . $modelo;
+        if ($proveedor === 'gemini') {
+            return ['ok' => false, 'contenido' => '', 'codigo' => 500, 'detalle' => 'sin servicio'];
+        }
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Respondió el respaldo.'])];
+    };
+    $r = lia_responder(usuario_actual() ?? [], 'Hola', []);
+    unset($GLOBALS['IA_FALSA']);
+
+    igual('Respondió el respaldo.', $r['respuesta']);
+    igual(['gemini/modelo-gemini', 'groq/modelo-groq'], $vistos, 'debía pasar al segundo proveedor');
+
+    $filas = db()->query('SELECT modelo, ok FROM ia_uso ORDER BY id')->fetchAll();
+    igual(2, count($filas), 'cada intento se registra en ia_uso');
+    igual('gemini/modelo-gemini', $filas[0]['modelo']);
+    igual(0, (int) $filas[0]['ok'], 'el intento fallido queda con ok = 0');
+    igual('groq/modelo-groq', $filas[1]['modelo']);
+    igual(1, (int) $filas[1]['ok'], 'el intento bueno queda con ok = 1');
+});
+
+prueba('si el modelo rechaza el esquema se reintenta con json_object', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    usuario_prueba();
+
+    $formatos = [];
+    $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$formatos) {
+        $tipo = (string) ($payload['response_format']['type'] ?? '');
+        $formatos[] = $tipo;
+        if ($tipo === 'json_schema') {
+            return ['ok' => false, 'contenido' => '', 'codigo' => 400, 'detalle' => 'esquema no soportado'];
+        }
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Con json_object.'])];
+    };
+    $r = lia_responder(usuario_actual() ?? [], 'Hola', []);
+    unset($GLOBALS['IA_FALSA']);
+
+    igual('Con json_object.', $r['respuesta']);
+    igual(['json_schema', 'json_object'], $formatos, 'debía reintentar sin esquema');
+});
+
+prueba('un JSON sin respuesta se registra como fallo y pasa al siguiente proveedor', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    $usuario = usuario_prueba();
+    $GLOBALS['IA_FALSA'] = function ($proveedor) {
+        $datos = json_decode(t3_json(), true);
+        if ($proveedor === 'gemini') {
+            unset($datos['respuesta']);
+        }
+        return ['ok' => true, 'codigo' => 200, 'contenido' => json_encode($datos)];
+    };
+    $r = lia_responder($usuario, 'Hola', []);
+    unset($GLOBALS['IA_FALSA']);
+    igual('Listo.', $r['respuesta']);
+    igual([0, 1], array_map('intval', db()->query('SELECT ok FROM ia_uso ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)));
+});
+
+prueba('el límite diario cuenta fallos e impide reintentar y llamar otra vez', function () {
+    t3_config_ia(1);
+    t3_limpiar_uso();
+    usuario_prueba();
+    $intentos = 0;
+    $GLOBALS['IA_FALSA'] = function () use (&$intentos) {
+        $intentos++;
+        return ['ok' => false, 'codigo' => 400, 'detalle' => 'esquema no soportado'];
+    };
+
+    for ($i = 0; $i < 2; $i++) {
+        $mensaje = '';
+        try {
+            ia_consultar('prueba', 'sistema', 'texto', lia_esquema());
+        } catch (RuntimeException $ex) {
+            $mensaje = $ex->getMessage();
+        }
+        igual('Se agotó por hoy el uso de la IA', $mensaje);
+    }
+    unset($GLOBALS['IA_FALSA']);
+
+    igual(1, $intentos);
+    igual([0], array_map('intval', db()->query('SELECT ok FROM ia_uso ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)));
+});
