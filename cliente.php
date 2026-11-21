@@ -187,6 +187,12 @@ if ($es_nuevo || $es_edicion) {
 
 $casos = cliente_casos($id);
 $eventos = cliente_eventos($id);
+$pedidos = [];
+if (puede('pedidos') && is_file(RAIZ . '/includes/pedidos.php')) {
+    require_once RAIZ . '/includes/inventario.php';
+    require_once RAIZ . '/includes/pedidos.php';
+    $pedidos = pedidos_listar(['cliente_id' => $id]);
+}
 $estados = ['activo' => 'etiqueta-ok', 'pausado' => 'etiqueta-alerta', 'terminado' => 'etiqueta'];
 $whatsapp = enlace_whatsapp((string) $cliente['telefono'], 'Hola ' . primer_nombre((string) $cliente['nombre']));
 
@@ -256,6 +262,31 @@ require __DIR__ . '/includes/header.php';
         </ul>
     <?php endif; ?>
 </section>
+
+<?php if (puede('pedidos') && defined('PEDIDO_ESTADOS')): ?>
+<section class="tarjeta">
+    <div class="encabezado">
+        <h2>Pedidos</h2>
+        <a class="boton boton-sec" href="pedido.php?nuevo=1&amp;cliente=<?= (int) $id ?>">Nuevo pedido</a>
+    </div>
+    <?php if (!$pedidos): ?>
+        <p class="suave">Este cliente todavía no tiene pedidos.</p>
+    <?php else: ?>
+        <ul class="lista">
+            <?php foreach ($pedidos as $p): ?>
+                <li>
+                    <a href="pedido.php?id=<?= (int) $p['id'] ?>"><strong>Pedido #<?= (int) $p['id'] ?></strong></a>
+                    · <?= e(dinero($p['total'])) ?>
+                    <span class="etiqueta"><?= e(PEDIDO_ESTADOS[$p['estado']] ?? $p['estado']) ?></span>
+                    <span class="etiqueta <?= $p['estado_pago'] === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">
+                        <?= e(PEDIDO_ESTADOS_PAGO[$p['estado_pago']] ?? $p['estado_pago']) ?></span>
+                    <div class="suave"><?= e(fecha_corta($p['creado'])) ?></div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
+<?php endif; ?>
 
 <section class="tarjeta">
     <h2>Historial</h2>
