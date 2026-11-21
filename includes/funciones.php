@@ -11,6 +11,9 @@ const PERMISOS = [
     'clientes' => ['admin', 'asesor'],
     'casos'    => ['admin', 'asesor'],
     'lia'      => ['admin', 'asesor'],
+    'pedidos'    => ['admin', 'asesor'],
+    'inventario' => ['admin', 'asesor'],
+    'mensajes'   => ['admin', 'asesor'],
     'usuarios' => ['admin'],
 ];
 
@@ -286,6 +289,25 @@ function telefono_whatsapp(string $telefono): string
 function enlace_whatsapp(string $telefono, string $texto): string
 {
     return 'https://wa.me/' . telefono_whatsapp($telefono) . '?text=' . rawurlencode($texto);
+}
+
+/**
+ * Rellena una plantilla: mensaje_rellenar('Hola {nombre}', ['nombre' => 'Ana']) → 'Hola Ana'.
+ * Los marcadores sin valor se quitan. Marcadores usados: {nombre} {producto} {guia} {transportadora}
+ * {total} {enlace} {fecha}.
+ */
+function mensaje_rellenar(string $texto, array $valores): string
+{
+    $texto = preg_replace_callback('/\{([a-z_]+)\}/', fn($m) => (string) ($valores[$m[1]] ?? ''), $texto);
+    return trim((string) preg_replace('/[ \t]{2,}/', ' ', $texto));
+}
+
+/** Texto de la plantilla activa con ese nombre, o '' si no existe. */
+function plantilla_texto(string $nombre): string
+{
+    $st = db()->prepare('SELECT texto FROM plantillas_mensaje WHERE nombre = ? AND activa = 1 ORDER BY id LIMIT 1');
+    $st->execute([$nombre]);
+    return (string) ($st->fetchColumn() ?: '');
 }
 
 function primer_nombre(string $nombre): string

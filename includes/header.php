@@ -1,6 +1,7 @@
 <?php
 /**
- * Cabecera común. Antes de incluirla, la página define $titulo (y opcionalmente $activo = 'inicio' | 'clientes' | 'usuarios').
+ * Cabecera común. Antes de incluirla, la página define $titulo (y opcionalmente
+ * $activo = 'inicio' | 'clientes' | 'pedidos' | 'inventario' | 'mensajes' | 'usuarios').
  * El menú solo muestra las pantallas que ya existen y que el usuario puede ver.
  */
 $u = usuario_actual();
@@ -9,6 +10,9 @@ $activo = $activo ?? '';
 $menu = [
     'inicio'   => ['index.php', 'Inicio', null],
     'clientes' => ['clientes.php', 'Clientes', 'clientes'],
+    'pedidos'    => ['pedidos.php', 'Pedidos', 'pedidos'],
+    'inventario' => ['inventario.php', 'Inventario', 'inventario'],
+    'mensajes'   => ['mensajes.php', 'Mensajes', 'mensajes'],
     'usuarios' => ['usuarios.php', 'Usuarios', 'usuarios'],
 ];
 ?><!doctype html>

@@ -23,8 +23,91 @@ ajusta después de ver la primera versión).
 - Lía: asistente por texto y voz. Responde preguntas como «¿cómo va Julián Gómez con su proceso?», busca y
   abre fichas. Solo consulta y navega: nunca cambia datos ni recomienda dosis.
 
-**Queda fuera (por ahora)**: pedidos, ventas, inventario de viales, pagos, envío automático por WhatsApp,
-portal del cliente con usuario, recordatorios automáticos.
+**Queda fuera de la primera versión** (pedidos, inventario y mensajes pasaron a la ronda 2, abajo): pagos en
+línea, envío automático por la API de WhatsApp Business, portal del cliente con usuario, recordatorios automáticos.
+
+## Ronda 2 — pedidos, inventario y mensajes (pedido por el equipo el 2026-11-20)
+
+Lo pidió el compañero de trabajo de Joan: información de pedidos, estado de los pedidos, inventario y mensajes
+personalizados, también a muchos clientes a la vez. Decisiones (Joan, 2026-11-20; se ajustan después):
+
+- Pagos por **Nequi, efectivo y llave Bre-B**. La app no cobra: se anota cada pago a mano. Un pedido puede tener
+  varios pagos (abonos) y devoluciones (pago negativo). Estado del pago calculado: pendiente, parcial o pagado.
+- Estado del pedido: **cotizado → confirmado → despachado → entregado**, más **cancelado** y **devuelto**.
+  Para despachar: pago completo, o pedido marcado **contraentrega** (efectivo al recibir). Despachar exige
+  transportadora y guía (texto libre: aún no se sabe la transportadora) y descuenta el inventario.
+- Inventario por **lote y fecha de vencimiento**. Se descuenta del lote que vence primero; nunca de lotes vencidos.
+  Alertas de stock bajo (`productos.stock_minimo`), lotes por vencer (30 días) y vencidos con unidades.
+- Mensajes: **plantillas** con marcadores y **campañas** a muchos clientes. WhatsApp no permite que una app gratis
+  envíe sola en masa: la campaña prepara un mensaje personalizado por cliente y los abre uno tras otro para tocar
+  Enviar. La tabla `mensajes` tiene `canal` para conectar después la API de WhatsApp Business (de pago, con
+  verificación de Meta) sin rehacer nada.
+
+Base de la ronda (líder, hecha): migraciones `sql/003` y `sql/004`, `includes/inventario.php` (stock, entradas,
+descontar y reintegrar pedidos, alertas) con `tests/test_inventario_base.php`, permisos `pedidos`, `inventario` y
+`mensajes`, menú, y `mensaje_rellenar()` / `plantilla_texto()` en `funciones.php`.
+
+| # | Tarea | Agente | Revisa | Estado |
+|---|---|---|---|---|
+| 4 | Pedidos, pagos, estados y enlace público del pedido | Codex | Copilot | Pendiente |
+| 5 | Pantallas de inventario: existencias, lotes, entradas, ajustes y alertas | OpenCode | Codex | Pendiente |
+| 6 | Mensajes: plantillas, mensaje a un cliente y campañas | Grok | Codex | Pendiente |
+| 7 | Usuarios (admin) y pulido de `caso.php` | Por asignar | | Siguiente |
+| 8 | Guía para publicar en Hostinger | Líder | | Siguiente |
+
+### T4 — Pedidos (Codex)
+- **Archivos:** `pedidos.php`, `pedido.php`, `pedido_estado.php`, `includes/pedidos.php`, `tests/test_pedidos.php`.
+- `includes/pedidos.php`: `pedido_crear(array $datos, array $items): int` (cliente, caso opcional del mismo cliente,
+  ítems con producto del catálogo, cantidad > 0 y precio unitario —por defecto el del catálogo, editable—, envío
+  por defecto 25.000, descuento, dirección, ciudad, notas, contraentrega; calcula subtotal y total; token),
+  `pedido_obtener`, `pedido_items`, `pedido_actualizar` (solo en cotizado/confirmado), `pago_agregar(int $pedido_id,
+  array $datos)` (método nequi/efectivo/bre_b, valor ≠ 0, referencia), `pedido_pagado(int $id): int`,
+  `pedido_estado_pago(int $id): string` (pendiente | parcial | pagado), `pedido_cambiar_estado(int $id,
+  string $nuevo, array $datos = [])` con estas reglas:
+  cotizado → confirmado | cancelado; confirmado → despachado | cancelado; despachado → entregado | devuelto;
+  despachar exige pago completo o contraentrega, transportadora y guía, y llama a `inventario_descontar_pedido()`;
+  devuelto llama a `inventario_reintegrar_pedido()`; entregado con contraentrega exige el pago completo registrado.
+  Todo en transacción (`en_transaccion()` de `includes/inventario.php`), con fila en `pedido_historial` y
+  `registrar_evento()` en el cliente. `pedidos_listar(array $filtros)` por estado, estado de pago, cliente o texto.
+- `pedidos.php`: tablero con pestañas por estado (con su número) y buscador; cada fila con cliente, total, estado
+  de pago y fecha. Botón «Nuevo pedido».
+- `pedido.php`: `?nuevo=1&cliente=N` (o elegir cliente) crea; `?id=N` muestra ítems, totales, pagos (formulario
+  para agregar), estado con botones solo para los pasos permitidos, datos de envío, historial, botón «Avisar por
+  WhatsApp» con la plantilla «Pedido despachado» (`plantilla_texto()` + `mensaje_rellenar()`) y enlace público.
+- `pedido_estado.php?t=TOKEN`: pública, sin login (como `plan.php`): primer nombre, ítems, total, estado del pago,
+  estado del pedido con su línea de tiempo, transportadora y guía. Nunca teléfono, dirección, correo ni notas.
+- `cliente.php` no se toca: el líder agrega luego el enlace a los pedidos del cliente.
+- **Hecho cuando:** `tests/run.php` pasa con pruebas de totales, pagos y estado de pago, cada transición permitida
+  y prohibida, despacho que descuenta inventario (y falla sin stock o sin pago), devolución que reintegra, y token.
+
+### T5 — Inventario (OpenCode)
+- **Archivos:** `inventario.php`, `producto.php`, `tests/test_inventario.php`. Usa `includes/inventario.php` sin
+  cambiarlo (si le falta algo, dilo en el informe).
+- `inventario.php`: arriba las alertas (`inventario_alertas()`); tabla de productos con categoría, stock vigente,
+  stock mínimo y estado (ok / bajo / agotado); buscador; formulario rápido «Entrada de mercancía» (producto, código
+  de lote, vencimiento, cantidad, nota).
+- `producto.php?id=N`: lotes con vencimiento y unidades (marcar vencidos y por vencer), movimientos recientes con
+  tipo, cantidad, pedido y usuario, formulario de ajuste (lote, cantidad + o −, motivo obligatorio) y editar
+  `stock_minimo` y `precio` del producto.
+- **Hecho cuando:** `tests/run.php` pasa con pruebas de las funciones nuevas que crees (por ejemplo ajuste con
+  motivo, cambio de stock mínimo) y las páginas cargan sin errores.
+
+### T6 — Mensajes (Grok)
+- **Archivos:** `mensajes.php`, `campana.php`, `includes/mensajes.php`, `tests/test_mensajes.php`.
+- `includes/mensajes.php`: plantillas (crear, editar, activar/desactivar), `mensaje_para_cliente(int $cliente_id,
+  string $texto): string` (rellena {nombre} con el primer nombre y los demás marcadores que se puedan),
+  `campana_crear(string $nombre, string $texto, array $cliente_ids, string $filtro): int` (crea una fila en
+  `mensajes` por cliente, estado pendiente, canal whatsapp_manual), `campana_destinatarios(string $filtro, array
+  $opciones): array` con filtros: todos los activos, con proceso activo, con contacto atrasado, que compraron un
+  producto (por `pedido_items`), sin pedidos en N días; `mensaje_marcar(int $id, string $estado)`.
+- `mensajes.php`: plantillas (lista y formulario), campañas anteriores con avance (enviados / pendientes) y botón
+  «Nueva campaña».
+- `campana.php`: `?nuevo=1` elige filtro → muestra la lista con casillas (todas marcadas) → texto (plantilla o
+  libre, con vista previa con el primer cliente) → crear. `?id=N`: modo envío: un mensaje a la vez con el texto ya
+  personalizado, botón «Abrir WhatsApp» (`enlace_whatsapp()`, nueva pestaña) que lo marca enviado y pasa al
+  siguiente, y «Omitir». Muestra el avance. Clientes sin teléfono válido se omiten solos.
+- **Hecho cuando:** `tests/run.php` pasa con pruebas de rellenar marcadores por cliente, cada filtro de
+  destinatarios, crear campaña con N mensajes y marcar enviado/omitido.
 
 ## Herramientas
 

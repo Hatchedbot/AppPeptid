@@ -50,3 +50,10 @@ prueba('registrar un evento en el historial', function () {
     $st->execute([$id]);
     igual(['texto' => 'Primera llamada', 'usuario_id' => $u['id']], $st->fetch());
 });
+
+prueba('plantillas: rellenar marcadores y leer la plantilla por nombre', function () {
+    igual('Hola Ana, guía 123', mensaje_rellenar('Hola {nombre}, guía {guia}', ['nombre' => 'Ana', 'guia' => '123']));
+    igual('Hola', mensaje_rellenar('Hola {nombre}', []));
+    contiene('{guia}', plantilla_texto('Pedido despachado'));
+    igual('', plantilla_texto('No existe'));
+});
