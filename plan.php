@@ -26,8 +26,13 @@ if (!$plan) {
             <h1>Plan no encontrado</h1>
             <p>Revisa el enlace o pídele a tu asesor que te lo comparta de nuevo.</p>
         <?php else: ?>
+            <p class="suave"><?= e(config('app.negocio')) ?></p>
             <h1>Plan de <?= e($plan['primer_nombre']) ?></h1>
             <p class="suave">Versión <?= e($plan['version']) ?> · <?= e(fecha_corta($plan['creado'])) ?></p>
+            <?php if ((int) $plan['ultima_version'] > (int) $plan['version']): ?>
+                <div class="aviso aviso-error">Este plan ya fue reemplazado por una versión más nueva.
+                    Pídele a tu asesor el enlace actualizado.</div>
+            <?php endif; ?>
             <?php if ($plan['items']): ?>
                 <h2>Ítems del plan</h2>
                 <ul>
@@ -43,6 +48,7 @@ if (!$plan) {
             <?php endif; ?>
             <h2>Indicaciones</h2>
             <p><?= nl2br(e($plan['indicaciones'])) ?></p>
+            <p class="suave">Si tienes dudas, escríbenos por WhatsApp.</p>
         <?php endif; ?>
     </article>
 </main>

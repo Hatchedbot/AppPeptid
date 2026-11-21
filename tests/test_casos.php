@@ -79,7 +79,7 @@ prueba('conserva los ítems y el token de cada versión y registra el envío', f
     $publico = plan_por_token($planes[1]['token']);
     igual($primero, (int) $publico['id']);
     igual('Cliente', $publico['primer_nombre']);
-    igual(['Ítem A', 'Ítem B'], array_column($publico['items'], 'producto_nombre'));
+    igual(['Ítem A', 'Ítem B Presentación ficticia'], array_column($publico['items'], 'producto_nombre'));
     igual('Nota interna', plan_items_del_plan($primero)[0]['notas']);
     igual(['producto_nombre', 'dosis', 'frecuencia', 'duracion'], array_keys($publico['items'][0]));
     igual(['Ítem C'], array_column(plan_por_token($planes[0]['token'])['items'], 'producto_nombre'));

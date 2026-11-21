@@ -165,17 +165,19 @@ function plan_nueva_version(int $caso_id, array $items, string $indicaciones, st
             'INSERT INTO plan_items (plan_id, producto_id, producto_nombre, dosis, frecuencia, duracion, notas, orden)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        $producto = $pdo->prepare('SELECT nombre FROM productos WHERE id = ?');
+        // "Retatrutide 10 mg": el nombre lleva la presentación (sin el "-" de los que no tienen).
+        $producto = $pdo->prepare('SELECT nombre, presentacion FROM productos WHERE id = ?');
         foreach (array_values($items) as $indice => $item) {
             $producto_nombre = trim($item['producto_nombre'] ?? '');
 
             $producto_id = (int) ($item['producto_id'] ?? 0) ?: null;
             if ($producto_id !== null) {
                 $producto->execute([$producto_id]);
-                $producto_nombre = $producto->fetchColumn();
-                if ($producto_nombre === false) {
+                $fila = $producto->fetch();
+                if (!$fila) {
                     throw new InvalidArgumentException('El producto del catálogo no existe.');
                 }
+                $producto_nombre = trim($fila['nombre'] . ' ' . str_replace('-', '', (string) $fila['presentacion']));
             }
             if ($producto_nombre === '') {
                 throw new InvalidArgumentException('Escribe o selecciona el producto del ítem.');
@@ -201,7 +203,8 @@ function plan_items_del_plan(int $plan_id): array
 function plan_por_token(string $token): ?array
 {
     $st = db()->prepare(
-        'SELECT p.id, p.token, p.version, p.indicaciones, p.creado, cl.nombre
+        'SELECT p.id, p.token, p.version, p.indicaciones, p.creado, cl.nombre,
+                (SELECT MAX(p2.version) FROM planes p2 WHERE p2.caso_id = p.caso_id) AS ultima_version
          FROM planes p JOIN casos c ON c.id = p.caso_id JOIN clientes cl ON cl.id = c.cliente_id
          WHERE p.token = ?'
     );
