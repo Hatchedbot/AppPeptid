@@ -311,3 +311,12 @@ prueba('el límite diario cuenta fallos e impide reintentar y llamar otra vez', 
     igual(1, $intentos);
     igual([0], array_map('intval', db()->query('SELECT ok FROM ia_uso ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)));
 });
+
+prueba('Lía reconoce al cliente con solo nombre y apellido', function () {
+    db()->prepare('INSERT INTO clientes (nombre, telefono, creado, actualizado) VALUES (?, ?, ?, ?)')
+        ->execute(['Mariana Ortiz Valencia', '3009998877', ahora(), ahora()]);
+    $r = lia_buscar_clientes('como va mariana ortiz con su proceso');
+    igual(['Mariana Ortiz Valencia'], array_column($r['completos'], 'nombre'));
+    $r = lia_buscar_clientes('como va mariana');
+    igual([], array_column($r['completos'], 'nombre'), 'solo el nombre no basta');
+});

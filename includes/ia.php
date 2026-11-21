@@ -382,7 +382,8 @@ function lia_buscar_clientes(string $texto): array
                 $coinciden++;
             }
         }
-        if ($coinciden === count($suyas)) {
+        // Basta con nombre y apellido: "Julián Gómez" encuentra a "Julián Gómez Restrepo".
+        if ($coinciden >= min(2, count($suyas))) {
             $completos[] = $cliente;
         } elseif ($coinciden > 0) {
             $parciales[] = $cliente;
@@ -555,7 +556,7 @@ function lia_preparar_respuesta(array $datos, array $clientes): array
 
     $respuesta = (string) preg_replace_callback('/\bCliente \d+\b/iu', function ($m) use ($porAlias) {
         $cliente = $porAlias[mb_strtolower($m[0])] ?? null;
-        return $cliente === null ? $m[0] : primer_nombre($cliente['nombre']);
+        return $cliente === null ? 'ese cliente' : primer_nombre($cliente['nombre']);
     }, $respuesta);
 
     $url = '';
