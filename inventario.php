@@ -3,141 +3,10 @@
  * Pantalla de inventario: alertas, existencias por producto, entrada de mercancía
  * y acceso a la ficha de cada producto (lotes, movimientos y ajustes).
  *
- * Las funciones del módulo viven aquí, al principio, para poder probarlas sin
- * ejecutar la página. El cuerpo de la página solo corre cuando este archivo es
- * el script pedido (así producto.php puede incluirlo para reusar las funciones).
+ * Las funciones del módulo viven en includes/inventario.php.
  */
 
-if (!function_exists('inventario_pagina_es_actual')) {
-    /** Verdadero solo cuando $archivo es el script que se está ejecutando. */
-    function inventario_pagina_es_actual(string $archivo): bool
-    {
-        $script = $_SERVER['SCRIPT_FILENAME'] ?? '';
-        return $script !== '' && realpath($script) === realpath($archivo);
-    }
-}
-
-if (!function_exists('inventario_productos')) {
-    /** Texto comparable (minúsculas y sin tildes) para buscar. */
-    function inventario_texto_comparable(string $texto): string
-    {
-        $texto = (string) preg_replace('/\s+/u', ' ', trim($texto));
-        $texto = mb_strtolower($texto, 'UTF-8');
-        return strtr($texto, [
-            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
-        ]);
-    }
-
-    /**
-     * Productos activos con su stock vigente, stock mínimo y estado.
-     * Con $q filtra por nombre, presentación o categoría (sin tildes).
-     * Devuelve cada fila con 'stock' y 'estado' (ok | bajo | agotado).
-     */
-    function inventario_productos(string $q = ''): array
-    {
-        $filas = db()->query(
-            'SELECT id, nombre, presentacion, categoria, precio, activo, stock_minimo
-             FROM productos WHERE activo = 1
-             ORDER BY categoria, nombre, id'
-        )->fetchAll();
-
-        $q = inventario_texto_comparable($q);
-        $resultado = [];
-        foreach ($filas as $fila) {
-            if ($q !== '') {
-                $texto = inventario_texto_comparable(
-                    $fila['nombre'] . ' ' . $fila['presentacion'] . ' ' . $fila['categoria']
-                );
-                if (!str_contains($texto, $q)) {
-                    continue;
-                }
-            }
-            $stock = inventario_stock_producto((int) $fila['id'], true);
-            $fila['stock'] = $stock;
-            $fila['estado'] = $stock <= 0
-                ? 'agotado'
-                : ($stock <= (int) $fila['stock_minimo'] ? 'bajo' : 'ok');
-            $resultado[] = $fila;
-        }
-        return $resultado;
-    }
-
-    /** Un producto por id, o null si no existe. */
-    function inventario_producto_obtener(int $id): ?array
-    {
-        if ($id <= 0) {
-            return null;
-        }
-        $st = db()->prepare('SELECT * FROM productos WHERE id = ?');
-        $st->execute([$id]);
-        return $st->fetch() ?: null;
-    }
-
-    /** Un lote por id, o null si no existe. */
-    function inventario_lote_obtener(int $lote_id): ?array
-    {
-        $st = db()->prepare('SELECT * FROM lotes WHERE id = ?');
-        $st->execute([$lote_id]);
-        return $st->fetch() ?: null;
-    }
-
-    /**
-     * Ajusta el stock de un lote. $cantidad positiva suma y negativa resta.
-     * El motivo es obligatorio y queda en la nota del movimiento.
-     */
-    function inventario_ajustar(int $lote_id, int $cantidad, string $motivo): int
-    {
-        $motivo = trim($motivo);
-        if ($motivo === '') {
-            throw new InvalidArgumentException('Escribe el motivo del ajuste.');
-        }
-        if ($cantidad === 0) {
-            throw new InvalidArgumentException('La cantidad del ajuste no puede ser cero.');
-        }
-        if (!inventario_lote_obtener($lote_id)) {
-            throw new InvalidArgumentException('El lote no existe.');
-        }
-        return inventario_movimiento($lote_id, 'ajuste', $cantidad, null, 'Ajuste: ' . $motivo);
-    }
-
-    /** Movimientos recientes de un producto, con lote, pedido y usuario. */
-    function inventario_movimientos(int $producto_id, int $limite = 50): array
-    {
-        $st = db()->prepare(
-            'SELECT m.id, m.tipo, m.cantidad, m.pedido_id, m.nota, m.fecha,
-                    l.codigo AS lote_codigo, l.vencimiento AS lote_vencimiento,
-                    u.nombre AS usuario_nombre
-             FROM movimientos_inventario m
-             JOIN lotes l ON l.id = m.lote_id
-             LEFT JOIN usuarios u ON u.id = m.usuario_id
-             WHERE l.producto_id = ?
-             ORDER BY m.fecha DESC, m.id DESC
-             LIMIT ?'
-        );
-        $st->bindValue(1, $producto_id, PDO::PARAM_INT);
-        $st->bindValue(2, $limite, PDO::PARAM_INT);
-        $st->execute();
-        return $st->fetchAll();
-    }
-
-    /** Cambia el stock mínimo y el precio de un producto. Valida ambos. */
-    function inventario_actualizar_producto(int $id, array $datos): void
-    {
-        if (!inventario_producto_obtener($id)) {
-            throw new InvalidArgumentException('El producto no existe.');
-        }
-        $minimo = numero_entrada($datos['stock_minimo'] ?? null);
-        if ($minimo === null || $minimo < 0 || floor($minimo) != $minimo) {
-            throw new InvalidArgumentException('El stock mínimo debe ser un número entero mayor o igual que cero.');
-        }
-        $precio = numero_entrada($datos['precio'] ?? null);
-        if ($precio === null || $precio < 0) {
-            throw new InvalidArgumentException('El precio debe ser un número mayor o igual que cero.');
-        }
-        db()->prepare('UPDATE productos SET stock_minimo = ?, precio = ? WHERE id = ?')
-            ->execute([(int) $minimo, (int) round($precio), $id]);
-    }
-}
+require_once __DIR__ . '/includes/inventario.php';
 
 /* El cuerpo de la página solo corre cuando se pide este archivo. */
 if (!inventario_pagina_es_actual(__FILE__)) {
@@ -147,7 +16,6 @@ if (!inventario_pagina_es_actual(__FILE__)) {
 if (!defined('RAIZ')) {
     require __DIR__ . '/includes/app.php';
 }
-require_once __DIR__ . '/includes/inventario.php';
 requerir_permiso('inventario');
 
 $q_raw = trim((string) ($_GET['q'] ?? ''));
@@ -199,53 +67,64 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <section class="tarjeta">
-    <h2>Alertas</h2>
+    <h2 class="titulo-icono"><?= icono('alerta') ?> Alertas</h2>
     <?php if (!$alertas['stock_bajo'] && !$alertas['por_vencer'] && !$alertas['vencidos']): ?>
         <p class="suave">Todo en orden: no hay stock bajo, lotes por vencer ni vencidos con unidades.</p>
     <?php else: ?>
+        <?php
+        /* Cada grupo muestra las primeras 5; el resto queda plegado en un details. */
+        $alerta_item_stock = function (array $p): void { ?>
+            <li>
+                <a class="boton boton-sec" href="producto.php?id=<?= (int) $p['id'] ?>"><?= e($p['nombre']) ?> · <?= e($p['presentacion']) ?></a>
+                <span class="etiqueta <?= (int) $p['stock'] <= 0 ? 'etiqueta-error' : 'etiqueta-alerta' ?>">
+                    <?= (int) $p['stock'] <= 0 ? 'Agotado' : 'Quedan ' . (int) $p['stock'] ?>
+                </span>
+                <div class="suave">Mínimo: <?= (int) $p['stock_minimo'] ?></div>
+            </li>
+        <?php };
+        $alerta_item_lote = function (string $clase, string $prefijo): callable {
+            return function (array $l) use ($clase, $prefijo): void { ?>
+                <li>
+                    <strong><?= e($l['codigo']) ?></strong> · <?= e($l['nombre']) ?> · <?= e($l['presentacion']) ?>
+                    <span class="etiqueta <?= $clase ?>"><?= $prefijo ?> <?= e(fecha_corta((string) $l['vencimiento'])) ?></span>
+                    <div class="suave"><?= (int) $l['stock'] ?> unidades</div>
+                </li>
+            <?php };
+        };
+        $alerta_grupo = function (callable $item, array $items): void {
+            $visibles = array_slice($items, 0, 5);
+            $resto = array_slice($items, 5);
+            ?>
+            <ul class="lista">
+                <?php foreach ($visibles as $it): $item($it); endforeach; ?>
+            </ul>
+            <?php if ($resto): ?>
+                <details>
+                    <summary class="boton boton-sec">Ver las <?= count($resto) ?> restantes</summary>
+                    <ul class="lista">
+                        <?php foreach ($resto as $it): $item($it); endforeach; ?>
+                    </ul>
+                </details>
+            <?php endif;
+        };
+        ?>
         <?php if ($alertas['stock_bajo']): ?>
             <h3>Stock bajo</h3>
-            <ul class="lista">
-                <?php foreach ($alertas['stock_bajo'] as $p): ?>
-                    <li>
-                        <a class="boton boton-sec" href="producto.php?id=<?= (int) $p['id'] ?>"><?= e($p['nombre']) ?> · <?= e($p['presentacion']) ?></a>
-                        <span class="etiqueta <?= (int) $p['stock'] <= 0 ? 'etiqueta-error' : 'etiqueta-alerta' ?>">
-                            <?= (int) $p['stock'] <= 0 ? 'Agotado' : 'Quedan ' . (int) $p['stock'] ?>
-                        </span>
-                        <div class="suave">Mínimo: <?= (int) $p['stock_minimo'] ?></div>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+            <?php $alerta_grupo($alerta_item_stock, $alertas['stock_bajo']); ?>
         <?php endif; ?>
         <?php if ($alertas['por_vencer']): ?>
             <h3>Por vencer (30 días)</h3>
-            <ul class="lista">
-                <?php foreach ($alertas['por_vencer'] as $l): ?>
-                    <li>
-                        <strong><?= e($l['codigo']) ?></strong> · <?= e($l['nombre']) ?> · <?= e($l['presentacion']) ?>
-                        <span class="etiqueta etiqueta-alerta">Vence <?= e(fecha_corta((string) $l['vencimiento'])) ?></span>
-                        <div class="suave"><?= (int) $l['stock'] ?> unidades</div>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+            <?php $alerta_grupo($alerta_item_lote('etiqueta-alerta', 'Vence'), $alertas['por_vencer']); ?>
         <?php endif; ?>
         <?php if ($alertas['vencidos']): ?>
             <h3>Vencidos con unidades</h3>
-            <ul class="lista">
-                <?php foreach ($alertas['vencidos'] as $l): ?>
-                    <li>
-                        <strong><?= e($l['codigo']) ?></strong> · <?= e($l['nombre']) ?> · <?= e($l['presentacion']) ?>
-                        <span class="etiqueta etiqueta-error">Venció <?= e(fecha_corta((string) $l['vencimiento'])) ?></span>
-                        <div class="suave"><?= (int) $l['stock'] ?> unidades</div>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+            <?php $alerta_grupo($alerta_item_lote('etiqueta-error', 'Venció'), $alertas['vencidos']); ?>
         <?php endif; ?>
     <?php endif; ?>
 </section>
 
 <form method="get" action="inventario.php" class="tarjeta formulario">
-    <h2>Buscar productos</h2>
+    <h2 class="titulo-icono"><?= icono('buscar') ?> Buscar productos</h2>
     <div class="campo">
         <label for="q">Nombre, presentación o categoría</label>
         <input type="search" id="q" name="q" value="<?= e($q_raw) ?>" autocomplete="off">
@@ -257,7 +136,7 @@ require __DIR__ . '/includes/header.php';
 </form>
 
 <section id="entrada" class="tarjeta">
-    <h2>Entrada de mercancía</h2>
+    <h2 class="titulo-icono"><?= icono('camion') ?> Entrada de mercancía</h2>
     <p class="suave">Suma unidades a un lote. Si el código no existe, se crea el lote.</p>
     <?php if ($error): ?>
         <div class="aviso aviso-error"><?= e($error) ?></div>
@@ -303,7 +182,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Productos</h2>
+    <h2 class="titulo-icono"><?= icono('inventario') ?> Productos</h2>
     <?php if (!$productos): ?>
         <p class="suave">
             <?= $q_raw !== ''
