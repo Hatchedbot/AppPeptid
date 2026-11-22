@@ -513,3 +513,12 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
 @media (max-width: 768px) {
   #lia-raiz .lia-mensajes, #lia-raiz .lia-acciones { background: var(--superficie-2); }
 }
+
+/* Usuarios: engranaje (no confundir con el avatar de la cuenta). En computador lleva su nombre al lado. */
+.boton-icono-texto { display: none; }
+@media (min-width: 769px) {
+  .boton-icono { width: auto; padding: 0 .85rem; gap: .4rem; display: inline-flex; align-items: center; font-weight: 600; font-size: .92rem; }
+  .boton-icono-texto { display: inline; }
+}
+.boton-icono { text-decoration: none; }
+.salir, .quien { flex: none; white-space: nowrap; }
