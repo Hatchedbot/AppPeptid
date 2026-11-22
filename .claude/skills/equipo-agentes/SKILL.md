@@ -23,10 +23,10 @@ Todos los de esta tabla resolvieron la misma tarea de prueba el 20 de noviembre 
 | Implementador rápido | Devin (`devin`) | Tareas autónomas; fue el más rápido (34 s) | Modelo gratis solo hasta el 30 nov 2026 |
 | Revisor | Copilot (`copilot`) | Revisar lo que escribió Codex; PRs, issues, arreglos pequeños | Créditos mensuales, sin elegir modelo |
 | Revisor de lo que no escribió | Codex (`codex`) | Revisar lo de OpenCode, Kilo, Grok, Devin | La misma cuota Plus |
-| Interfaz | Antigravity (`antigravity`) | Cambios visuales verificados en navegador | Tope semanal; el más lento (285 s) |
+| Interfaz | Antigravity (`antigravity`) | Cambios visuales verificados en navegador | Joan tiene Google AI Plus, que Google no lista como Pro: cuota semanal, como la gratuita (Pro y Ultra se renuevan cada 5 h). Modelo base Gemini 3.8 Flash. El más lento en la prueba (285 s) |
 | Especificación | Kiro (`kiro`) | Requisitos y diseño antes de programar | 50 créditos/mes: no lo uses para programar |
 
-Gemini CLI (`gemini`) ya no sirve: desde el 18 de junio de 2026 Google no atiende cuentas gratuitas ni Pro en Gemini CLI. Su sustituto es Antigravity.
+Gemini CLI (`gemini`) ya no sirve con cuentas personales: desde el 18 de junio de 2026 Google no atiende ahí cuentas gratuitas, Pro ni Ultra (verificado el 22 nov 2026 en el anuncio oficial). Solo sigue con una clave de API de pago o una licencia de empresa (Gemini Code Assist). Gemini no desapareció: se pasó a Antigravity, que usa los mismos modelos con tu cuenta de Google. Límites oficiales: https://antigravity.google/docs/plans/
 
 Claude Agent Teams (`claude-agent-teams`) son copias del líder sobre la misma cuota Pro: resérvalo para cuando el usuario lo pida.
 
@@ -109,6 +109,7 @@ De seis lanzamientos de interfaz, solo Codex entregó a la primera. Antes de dar
 | Cursor | Un hook preToolUse roto (PowerShell dentro de bash) le impidió leer y escribir; además intentó bajar el código de GitHub | Relevar a Codex; revisar los hooks de Cursor antes de volver a usarlo |
 | Kilo | `orca agent launch` lo abre en una terminal sin entregar el encargo; enviado con `orca terminal send`, el texto se corta en los `<` | Guardar el encargo en `ENCARGO.txt` del worktree (añadido a `.git/info/exclude`) y enviar solo «Lee ENCARGO.txt y cúmplelo» |
 | Kilo | Se queda esperando «Permission required» en cada comando y nadie lo aprueba | No usarlo sin supervisión desde Orca hasta configurar sus permisos automáticos |
+| Kimi | «Your current subscription does not have access to Kimi Code»: la sesión está iniciada, pero la cuenta no tiene el plan de pago Kimi Code | No tiene puesto mientras no haya suscripción; además sus datos quedan bajo leyes de China |
 | OpenCode | «This request would exceed your available credits» a mitad de tarea, con cambios sin commit | Relevar conservando el diff; el relevo debe revisar lo heredado (Codex encontró un error que dejó OpenCode) |
 
 ## Caducidad
