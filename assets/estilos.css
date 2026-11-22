@@ -510,3 +510,6 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
   .contenido { padding-top: 1.25rem; }
   .menu a { padding-top: .55rem; padding-bottom: .55rem; }
 }
+@media (max-width: 768px) {
+  #lia-raiz .lia-mensajes, #lia-raiz .lia-acciones { background: var(--superficie-2); }
+}
