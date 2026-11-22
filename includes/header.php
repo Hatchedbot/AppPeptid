@@ -13,7 +13,6 @@ $menu = [
     'pedidos'    => ['pedidos.php', 'Pedidos', 'pedidos'],
     'inventario' => ['inventario.php', 'Inventario', 'inventario'],
     'mensajes'   => ['mensajes.php', 'Mensajes', 'mensajes'],
-    'usuarios'   => ['usuarios.php', 'Usuarios', 'usuarios'],
 ];
 ?><!doctype html>
 <html lang="es">
@@ -62,6 +61,10 @@ $menu = [
     <form method="post" action="logout.php" class="salir">
         <?= campo_csrf() ?>
         <?php $nombre_corto = primer_nombre($u['nombre']); ?>
+        <?php if (is_file(RAIZ . '/usuarios.php') && puede('usuarios')): ?>
+            <?php /* Usuarios va arriba y no en el menú: una barra de pestañas tiene máximo 5. */ ?>
+            <a class="boton-icono<?= $activo === 'usuarios' ? ' activo' : '' ?>" href="usuarios.php" aria-label="Usuarios"<?= $activo === 'usuarios' ? ' aria-current="page"' : '' ?>><?= icono('usuarios', '') ?></a>
+        <?php endif; ?>
         <span class="quien">
             <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($nombre_corto, 0, 1))) ?></span>
             <span class="quien-nombre"><?= e($nombre_corto) ?></span>

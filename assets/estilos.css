@@ -462,3 +462,18 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
 @media (prefers-reduced-motion: reduce) {
   .contenido > * { animation: none; }
 }
+
+/* Botón de solo ícono en la barra superior (Usuarios) */
+.boton-icono { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; color: var(--acento);
+  transition: background-color var(--transicion), transform 100ms ease-out; }
+.boton-icono svg { width: 22px; height: 22px; }
+.boton-icono.activo { background: var(--primario-suave); color: var(--primario); }
+.boton-icono:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) { .boton-icono:hover { background: var(--primario-suave); } }
+@media (max-width: 420px) {
+  .barra { gap: .4rem; padding-left: .75rem; padding-right: .5rem; }
+  .marca { font-size: .98rem; gap: .45rem; min-width: 0; }
+  .salir { gap: .15rem; }
+  .salir .boton-texto { padding: .25rem .4rem; }
+  .boton-icono { width: 40px; height: 44px; }
+}
