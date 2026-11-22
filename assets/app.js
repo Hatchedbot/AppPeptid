@@ -312,6 +312,48 @@
   }
   document.querySelectorAll('input[type="password"]').forEach(prepararVerClave);
 
+  // Deslizar hacia abajo para recargar. Solo en la app instalada (pantalla de inicio), que no tiene
+  // la barra del navegador ni su botón de recargar. En el navegador normal se usa el del navegador.
+  var instalada = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  if (instalada && 'ontouchstart' in window) {
+    var umbral = 80;
+    var indicador = document.createElement('div');
+    indicador.className = 'tirar-recargar';
+    indicador.setAttribute('aria-hidden', 'true');
+    indicador.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>';
+    document.body.appendChild(indicador);
+    var inicioY = null;
+    var tirado = 0;
+    document.addEventListener('touchstart', function (ev) {
+      var t = ev.target;
+      // No en campos, ni dentro de Lía, ni si la página no está arriba del todo.
+      if (window.scrollY > 0 || ev.touches.length !== 1 || (t.closest && t.closest('input, textarea, select, #lia-raiz'))) { inicioY = null; return; }
+      inicioY = ev.touches[0].clientY;
+      tirado = 0;
+    }, { passive: true });
+    document.addEventListener('touchmove', function (ev) {
+      if (inicioY === null) { return; }
+      tirado = Math.max(0, ev.touches[0].clientY - inicioY);
+      if (tirado <= 0) { return; }
+      var avance = Math.min(tirado / umbral, 1.4);
+      indicador.style.setProperty('--tirado', Math.min(tirado * 0.6, 110) + 'px');
+      indicador.style.setProperty('--giro', (avance * 270) + 'deg');
+      indicador.classList.add('visible');
+      indicador.classList.toggle('listo', tirado >= umbral);
+    }, { passive: true });
+    document.addEventListener('touchend', function () {
+      if (inicioY === null) { return; }
+      inicioY = null;
+      if (tirado >= umbral) {
+        indicador.classList.add('cargando');
+        window.location.reload();
+      } else {
+        indicador.classList.remove('visible', 'listo');
+        indicador.style.removeProperty('--tirado');
+      }
+    });
+  }
+
   // Botones con data-confirmar="¿Seguro?" piden confirmación antes de enviar.
   document.addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-confirmar]');

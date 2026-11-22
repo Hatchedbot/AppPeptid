@@ -540,3 +540,16 @@ html:not(.lg-lente-refracta) .menu-lente-copia { display: none; }
 html:not(.lg-lente-refracta) .menu-lente-cristal { filter: none; }
 html:not(.lg-lente-refracta) .menu-lente { z-index: 0; }
 html:not(.lg-lente-refracta) .menu a.activo { color: var(--primario); }
+
+/* Deslizar hacia abajo para recargar (solo en la app instalada; lo arma app.js) */
+.tirar-recargar { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 8px); z-index: 70;
+  width: 42px; height: 42px; margin-left: -21px; border-radius: 50%; display: grid; place-items: center;
+  color: var(--primario); background: var(--vidrio-claro, var(--superficie)); box-shadow: var(--sombra-alta);
+  -webkit-backdrop-filter: blur(12px) saturate(180%); backdrop-filter: blur(12px) saturate(180%);
+  opacity: 0; transform: translateY(calc(var(--tirado, 0px) - 50px)); pointer-events: none; transition: opacity 120ms ease; }
+.tirar-recargar svg { width: 22px; height: 22px; transform: rotate(var(--giro, 0deg)); }
+.tirar-recargar.visible { opacity: 1; }
+.tirar-recargar.listo { color: var(--acento); }
+.tirar-recargar.cargando svg { animation: girar 700ms linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tirar-recargar.cargando svg { animation: none; } }
