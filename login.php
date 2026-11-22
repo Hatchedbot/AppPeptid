@@ -20,6 +20,7 @@ $titulo = 'Entrar';
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="caja-entrada tarjeta">
+    <img class="logo-entrada" src="assets/marca/logo-brdg.png" alt="BRDG Peptides" width="160" height="160">
     <div class="encabezado">
         <div>
             <h1><?= e(config('app.nombre')) ?></h1>

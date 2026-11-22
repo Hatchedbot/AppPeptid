@@ -57,7 +57,7 @@ $menu = [
     </filter></svg>
 </template>
 <header class="barra">
-    <a class="marca" href="index.php"><span class="marca-punto" aria-hidden="true"></span><?= e(config('app.nombre')) ?></a>
+    <a class="marca" href="index.php"><img class="marca-simbolo" src="assets/marca/simbolo-brdg.png" alt="" width="24" height="25"><?= e(config('app.nombre')) ?></a>
     <form method="post" action="logout.php" class="salir">
         <?= campo_csrf() ?>
         <?php $nombre_corto = primer_nombre($u['nombre']); ?>

@@ -18,12 +18,12 @@ $config = [
     ],
     'ia' => [
         'limite_diario' => 200,
-        'orden' => ['gemini', 'groq'],
+        'orden' => ['gemini', 'groq'],   // Gemini ligero primero (~1 s y mejores respuestas); Groq de respaldo si Gemini se satura
         'proveedores' => [
             'gemini' => [
                 'url'     => 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
                 'clave'   => getenv('GEMINI_API_KEY') ?: '',
-                'modelos' => ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'],
+                'modelos' => ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'],
             ],
             'groq' => [
                 'url'     => 'https://api.groq.com/openai/v1/chat/completions',

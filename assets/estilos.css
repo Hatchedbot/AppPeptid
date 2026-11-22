@@ -490,3 +490,23 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
 /* Acciones rápidas en una fila de lista o tabla (Crear pedido, Crear proceso) */
 .acciones-fila { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; }
 .acciones-fila .boton { padding: .4rem .8rem; font-size: .88rem; }
+
+/* Logo de BRDG: símbolo (ADN entre corchetes) en la barra y logo completo en la entrada */
+.marca-simbolo { height: 26px; width: auto; flex: none; display: block; }
+.logo-entrada { display: block; width: 150px; height: auto; margin: 0 auto 1rem; }
+@media (max-width: 420px) { .marca-simbolo { height: 22px; } }
+
+/* iPhone (pensado en el 17 Pro Max: 440 × 956 puntos, Dynamic Island, barra de inicio abajo).
+   Lía se abre como hoja inferior de iOS y usa la altura real de la pantalla (dvh), sin quedar apretada. */
+@media (max-width: 768px) {
+  #lia-raiz .lia-panel { left: 10px; right: 10px; width: auto; border-radius: 26px;
+    bottom: calc(var(--alto-nav) + 22px + env(safe-area-inset-bottom));
+    max-height: min(72dvh, 640px); }
+  #lia-raiz .lia-mensajes { min-height: 34dvh; }
+  #lia-raiz .lia-campo { font-size: 16px; }   /* 16 px o más: Safari no hace zoom al escribir */
+}
+/* Pantallas altas (iPhone Pro Max): un poco más de aire */
+@media (max-width: 768px) and (min-height: 900px) {
+  .contenido { padding-top: 1.25rem; }
+  .menu a { padding-top: .55rem; padding-bottom: .55rem; }
+}
