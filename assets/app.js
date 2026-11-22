@@ -316,42 +316,75 @@
   // la barra del navegador ni su botón de recargar. En el navegador normal se usa el del navegador.
   var instalada = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
   if (instalada && 'ontouchstart' in window) {
-    var umbral = 80;
+    var umbral = 72;            // px de dedo para recargar
+    var reposo = 64;            // dónde se queda el círculo mientras carga
+    var contenido = document.querySelector('.contenido');
     var indicador = document.createElement('div');
     indicador.className = 'tirar-recargar';
-    indicador.setAttribute('aria-hidden', 'true');
-    indicador.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>';
+    indicador.setAttribute('role', 'status');
+    indicador.setAttribute('aria-live', 'polite');
+    indicador.innerHTML = '<svg class="tirar-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v13"/><path d="m6 12 6 6 6-6"/></svg>'
+      + '<svg class="tirar-giro" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="40 60"/></svg>'
+      + '<span class="sr-solo"></span>';
     document.body.appendChild(indicador);
-    var inicioY = null;
-    var tirado = 0;
+    var texto = indicador.querySelector('.sr-solo');
+    function resistencia(px) { return px < 0 ? 0 : 120 * (1 - Math.exp(-px / 120)); }   // se pone duro al bajar
+    function mover(px, animar) {
+      indicador.classList.toggle('animando', !!animar);
+      if (contenido) { contenido.classList.toggle('animando', !!animar); contenido.style.transform = px ? 'translateY(' + (px * 0.5) + 'px)' : ''; }
+      indicador.style.setProperty('--tirado', px + 'px');
+    }
+    function cargando() {
+      indicador.classList.add('visible', 'cargando');
+      document.documentElement.classList.add('recargando');
+      texto.textContent = 'Actualizando…';
+    }
+    // Si venimos de una recarga, el círculo sigue girando un momento y se va suave.
+    var vengoDeRecargar = false;
+    try { vengoDeRecargar = sessionStorage.getItem('brdg-recargando') === '1'; sessionStorage.removeItem('brdg-recargando'); } catch (e) { /* sin almacenamiento */ }
+    if (vengoDeRecargar) {
+      mover(reposo, false); cargando();
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          texto.textContent = 'Actualizado';
+          indicador.classList.add('terminado');
+          document.documentElement.classList.remove('recargando');
+          setTimeout(function () { indicador.classList.remove('visible', 'cargando', 'terminado'); mover(0, true); }, 450);
+        }, 350);
+      });
+    }
+    var inicioY = null, tirado = 0, ocupado = false;
     document.addEventListener('touchstart', function (ev) {
       var t = ev.target;
-      // No en campos, ni dentro de Lía, ni si la página no está arriba del todo.
-      if (window.scrollY > 0 || ev.touches.length !== 1 || (t.closest && t.closest('input, textarea, select, #lia-raiz'))) { inicioY = null; return; }
-      inicioY = ev.touches[0].clientY;
-      tirado = 0;
+      if (ocupado || window.scrollY > 0 || ev.touches.length !== 1 || (t.closest && t.closest('input, textarea, select, #lia-raiz'))) { inicioY = null; return; }
+      inicioY = ev.touches[0].clientY; tirado = 0;
     }, { passive: true });
     document.addEventListener('touchmove', function (ev) {
       if (inicioY === null) { return; }
-      tirado = Math.max(0, ev.touches[0].clientY - inicioY);
-      if (tirado <= 0) { return; }
-      var avance = Math.min(tirado / umbral, 1.4);
-      indicador.style.setProperty('--tirado', Math.min(tirado * 0.6, 110) + 'px');
-      indicador.style.setProperty('--giro', (avance * 270) + 'deg');
+      var bruto = ev.touches[0].clientY - inicioY;
+      if (bruto <= 0) { tirado = 0; mover(0, false); indicador.classList.remove('visible'); return; }
+      tirado = resistencia(bruto);
+      mover(tirado, false);
+      indicador.style.setProperty('--giro', Math.min(tirado / umbral, 1) * 180 + 'deg');
       indicador.classList.add('visible');
       indicador.classList.toggle('listo', tirado >= umbral);
     }, { passive: true });
-    document.addEventListener('touchend', function () {
+    function soltar() {
       if (inicioY === null) { return; }
       inicioY = null;
       if (tirado >= umbral) {
-        indicador.classList.add('cargando');
-        window.location.reload();
+        ocupado = true;
+        mover(reposo, true); cargando();
+        if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) { /* nada */ } }
+        try { sessionStorage.setItem('brdg-recargando', '1'); } catch (e) { /* nada */ }
+        setTimeout(function () { window.location.reload(); }, 450);   // deja ver la animación antes de recargar
       } else {
+        mover(0, true);
         indicador.classList.remove('visible', 'listo');
-        indicador.style.removeProperty('--tirado');
       }
-    });
+    }
+    document.addEventListener('touchend', soltar);
+    document.addEventListener('touchcancel', soltar);
   }
 
   // Botones con data-confirmar="¿Seguro?" piden confirmación antes de enviar.
