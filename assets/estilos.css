@@ -477,3 +477,16 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
   .salir .boton-texto { padding: .25rem .4rem; }
   .boton-icono { width: 40px; height: 44px; }
 }
+
+/* Etiqueta que solo se ve en celular, cuando la tabla se vuelve tarjetas (ej. «Teléfono» junto al dato) */
+.solo-movil { display: none; }
+@media (max-width: 640px) { .tabla-movil .solo-movil { display: inline; color: var(--texto-suave); margin-right: .25rem; } }
+
+/* Acción para quitar o borrar dentro de un formulario: secundaria, con texto rojo (no parece apagada) */
+.boton-quitar, button.boton-quitar { background: var(--superficie); color: var(--error); border-color: var(--error-fondo);
+  background-image: none; box-shadow: none; }
+@media (hover: hover) and (pointer: fine) { .boton-quitar:hover { background: var(--error-fondo); } }
+
+/* Acciones rápidas en una fila de lista o tabla (Crear pedido, Crear proceso) */
+.acciones-fila { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; }
+.acciones-fila .boton { padding: .4rem .8rem; font-size: .88rem; }

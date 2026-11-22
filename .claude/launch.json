@@ -6,6 +6,13 @@
       "runtimeExecutable": "C:\\xampp\\php\\php.exe",
       "runtimeArgs": ["-S", "localhost:8000"],
       "port": 8000
+    },
+    {
+      "name": "demo",
+      "runtimeExecutable": "C:\\xampp\\php\\php.exe",
+      "runtimeArgs": ["-S", "localhost:8080"],
+      "env": { "APP_DB_DSN": "sqlite:D:/UNIVERSIDAD/AppPeptid/datos/demo.sqlite" },
+      "port": 8080
     }
   ]
 }
