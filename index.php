@@ -4,19 +4,22 @@ require __DIR__ . '/includes/app.php';
 $u = requerir_login();
 
 $fecha_hoy = hoy();
+$ver_clientes = puede('clientes');
 $ver_controles = puede('casos');
 $ver_pedidos = puede('pedidos');
 $ver_inventario = puede('inventario');
 
-$st = db()->prepare('SELECT COUNT(*) FROM clientes WHERE activo = 1');
-$st->execute();
-$clientes = (int) $st->fetchColumn();
-$st = db()->prepare('SELECT COUNT(*) FROM casos WHERE estado = ?');
-$st->execute(['activo']);
-$casos = (int) $st->fetchColumn();
+if ($ver_clientes) {
+    $st = db()->prepare('SELECT COUNT(*) FROM clientes WHERE activo = 1');
+    $st->execute();
+    $clientes = (int) $st->fetchColumn();
+}
 
-$total_controles = '—';
 if ($ver_controles) {
+    $st = db()->prepare('SELECT COUNT(*) FROM casos WHERE estado = ?');
+    $st->execute(['activo']);
+    $casos = (int) $st->fetchColumn();
+
     $controles_pendientes = "FROM casos c JOIN clientes cl ON cl.id = c.cliente_id
                              WHERE c.estado = 'activo' AND c.proximo_contacto <= ?";
     $st = db()->prepare('SELECT COUNT(*) ' . $controles_pendientes);
@@ -30,16 +33,8 @@ if ($ver_controles) {
 
 if ($ver_pedidos) {
     require_once __DIR__ . '/includes/pedidos.php';
-    $por_despachar = array_slice(pedidos_listar(['estado' => 'confirmado']), 0, 5);
     $filtro_despacho = ['estado' => 'confirmado'];
-    if (count($por_despachar) < 5) {
-        $filtro_cotizados = ['estado' => 'cotizado', 'estado_pago' => 'pagado'];
-        $cotizados_pagados = pedidos_listar($filtro_cotizados);
-        if (!$por_despachar && $cotizados_pagados) {
-            $filtro_despacho = $filtro_cotizados;
-        }
-        array_push($por_despachar, ...array_slice($cotizados_pagados, 0, 5 - count($por_despachar)));
-    }
+    $por_despachar = pedidos_listar($filtro_despacho);
 }
 
 if ($ver_inventario) {
@@ -58,16 +53,22 @@ require __DIR__ . '/includes/header.php';
         <h1>Hola, <?= e(primer_nombre($u['nombre'])) ?></h1>
         <p class="suave"><?= e(fecha_corta($fecha_hoy)) ?></p>
     </div>
-    <?php if (puede('clientes') && is_file(RAIZ . '/cliente.php')): ?>
+    <?php if ($ver_clientes && is_file(RAIZ . '/cliente.php')): ?>
         <a class="boton" href="cliente.php?nuevo=1">Nuevo cliente</a>
     <?php endif; ?>
 </div>
 
-<div class="rejilla rejilla-cifras">
-    <div class="tarjeta"><div class="suave">Clientes activos</div><div class="cifra"><?= e($clientes) ?></div></div>
-    <div class="tarjeta"><div class="suave">Procesos en curso</div><div class="cifra"><?= e($casos) ?></div></div>
-    <div class="tarjeta"><div class="suave">Controles pendientes</div><div class="cifra"><?= e($total_controles) ?></div></div>
-</div>
+<?php if ($ver_clientes || $ver_controles): ?>
+    <div class="rejilla rejilla-cifras">
+        <?php if ($ver_clientes): ?>
+            <div class="tarjeta"><div class="suave">Clientes activos</div><div class="cifra"><?= e($clientes) ?></div></div>
+        <?php endif; ?>
+        <?php if ($ver_controles): ?>
+            <div class="tarjeta"><div class="suave">Procesos en curso</div><div class="cifra"><?= e($casos) ?></div></div>
+            <div class="tarjeta"><div class="suave">Controles pendientes</div><div class="cifra"><?= e($total_controles) ?></div></div>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
 <div class="rejilla">
 <?php if ($ver_controles): ?>
@@ -90,7 +91,9 @@ require __DIR__ . '/includes/header.php';
         <?php endforeach; ?>
         </ul>
     <?php endif; ?>
-    <a class="boton boton-sec" href="clientes.php">Ver clientes</a>
+    <?php if ($ver_clientes): ?>
+        <a class="boton boton-sec" href="clientes.php">Ver clientes</a>
+    <?php endif; ?>
 </section>
 <?php endif; ?>
 
