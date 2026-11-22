@@ -533,3 +533,10 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
 .boton-ver-clave svg { width: 18px; height: 18px; }
 .boton-ver-clave:focus-visible { outline: 2px solid var(--primario); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .boton-ver-clave:hover { background: var(--info-fondo); } }
+
+/* Sin copia refractada (Safari en iPhone y equipos lentos): la lente es una gota limpia DEBAJO de la
+   pestaña real, para que el ícono y el nombre se vean nítidos y sin deformarse. */
+html:not(.lg-lente-refracta) .menu-lente-copia { display: none; }
+html:not(.lg-lente-refracta) .menu-lente-cristal { filter: none; }
+html:not(.lg-lente-refracta) .menu-lente { z-index: 0; }
+html:not(.lg-lente-refracta) .menu a.activo { color: var(--primario); }

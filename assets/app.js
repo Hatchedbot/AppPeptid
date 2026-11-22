@@ -250,6 +250,9 @@
       ? navigator.userAgentData.brands.some(function (marca) { return marca.brand === 'Chromium'; })
       : /\bChrome\//.test(navigator.userAgent) && !/\b(?:iPhone|iPad|iPod)\b/.test(navigator.userAgent);
     var equipoLento = (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) || (navigator.deviceMemory && navigator.deviceMemory < 4);
+    // La copia refractada dentro de la lente solo se ve bien en Chrome/Edge. Safari (iPhone) la dibuja
+    // corrida y deformada, así que ahí la lente queda como gota limpia bajo la pestaña real.
+    if (chromium && !equipoLento) { document.documentElement.classList.add('lg-lente-refracta'); }
     if (chromium && !equipoLento && CSS.supports('backdrop-filter', 'url(#bisel-menu) blur(3px)')) {
       prepararBisel(menu, 'menu', observarTamano);
       var lia = document.querySelector('#lia-raiz .lia-flotante');
