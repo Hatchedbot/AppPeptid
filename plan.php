@@ -21,21 +21,31 @@ if (!$plan) {
 </head>
 <body>
 <main class="contenido">
-    <article class="tarjeta">
-        <?php if (!$plan): ?>
-            <h1>Plan no encontrado</h1>
-            <p>Revisa el enlace o pídele a tu asesor que te lo comparta de nuevo.</p>
-        <?php else: ?>
-            <p class="suave"><?= e(config('app.negocio')) ?></p>
-            <h1>Plan de <?= e($plan['primer_nombre']) ?></h1>
-            <p class="suave">Versión <?= e($plan['version']) ?> · <?= e(fecha_corta($plan['creado'])) ?></p>
-            <?php if ((int) $plan['ultima_version'] > (int) $plan['version']): ?>
-                <div class="aviso aviso-error">Este plan ya fue reemplazado por una versión más nueva.
-                    Pídele a tu asesor el enlace actualizado.</div>
+    <div class="encabezado">
+        <div>
+            <?php if (!$plan): ?>
+                <h1>Plan no encontrado</h1>
+                <p class="suave">Revisa que el enlace esté completo.</p>
+            <?php else: ?>
+                <h1>Plan de <?= e($plan['primer_nombre']) ?></h1>
+                <p class="suave"><?= e(config('app.negocio')) ?> · Versión <?= e($plan['version']) ?> · <?= e(fecha_corta($plan['creado'])) ?></p>
             <?php endif; ?>
-            <?php if ($plan['items']): ?>
-                <h2>Ítems del plan</h2>
-                <ul>
+        </div>
+    </div>
+    <?php if (!$plan): ?>
+        <section class="tarjeta">
+            <h2>Solicita el enlace</h2>
+                <p class="suave">Pídele a tu asesor que te comparta el enlace de nuevo.</p>
+        </section>
+    <?php else: ?>
+        <?php if ((int) $plan['ultima_version'] > (int) $plan['version']): ?>
+            <div class="aviso"><span class="etiqueta etiqueta-alerta">Versión anterior</span>
+                Pídele a tu asesor el enlace actualizado.</div>
+        <?php endif; ?>
+        <?php if ($plan['items']): ?>
+            <section class="tarjeta">
+                <h2>Productos del plan</h2>
+                <ul class="lista">
                     <?php foreach ($plan['items'] as $item): ?>
                         <li>
                             <strong><?= e($item['producto_nombre']) ?></strong>
@@ -45,12 +55,14 @@ if (!$plan) {
                         </li>
                     <?php endforeach; ?>
                 </ul>
-            <?php endif; ?>
+            </section>
+        <?php endif; ?>
+        <section class="tarjeta">
             <h2>Indicaciones</h2>
             <p><?= nl2br(e($plan['indicaciones'])) ?></p>
             <p class="suave">Si tienes dudas, escríbenos por WhatsApp.</p>
-        <?php endif; ?>
-    </article>
+        </section>
+    <?php endif; ?>
 </main>
 </body>
 </html>

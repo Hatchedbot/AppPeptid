@@ -29,20 +29,36 @@ $titulo = 'Primer uso';
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="caja-entrada tarjeta">
-    <h1>Bienvenido</h1>
-    <p class="suave">Crea la cuenta del administrador. Después podrás crear las de los asesores.</p>
-    <?php if ($error): ?><div class="aviso aviso-error"><?= e($error) ?></div><?php endif; ?>
+    <div class="encabezado">
+        <div>
+            <h1>Configura tu cuenta</h1>
+            <p class="suave">Desde esta cuenta podrás crear las de los asesores.</p>
+        </div>
+    </div>
+    <?php if ($error): ?><div class="aviso aviso-error" role="alert"><?= e($error) ?></div><?php endif; ?>
     <form method="post" class="formulario">
         <?= campo_csrf() ?>
-        <div class="campo"><label for="nombre">Tu nombre</label>
-            <input type="text" id="nombre" name="nombre" required value="<?= e($_POST['nombre'] ?? '') ?>"></div>
-        <div class="campo"><label for="usuario">Usuario para entrar</label>
-            <input type="text" id="usuario" name="usuario" required autocomplete="username" value="<?= e($_POST['usuario'] ?? '') ?>"></div>
-        <div class="campo"><label for="clave">Contraseña (mínimo 8)</label>
-            <input type="password" id="clave" name="clave" required minlength="8" autocomplete="new-password"></div>
-        <div class="campo"><label for="clave2">Repite la contraseña</label>
-            <input type="password" id="clave2" name="clave2" required minlength="8" autocomplete="new-password"></div>
-        <button type="submit" class="boton">Crear administrador</button>
+        <h2>Cuenta de administrador</h2>
+        <div class="campo">
+            <label for="nombre">Tu nombre</label>
+            <input type="text" id="nombre" name="nombre" autocomplete="name" required value="<?= e($_POST['nombre'] ?? '') ?>">
+        </div>
+        <div class="campo">
+            <label for="usuario">Usuario para entrar</label>
+            <input type="text" id="usuario" name="usuario" required autocomplete="username" autocapitalize="none"
+                   value="<?= e($_POST['usuario'] ?? '') ?>">
+        </div>
+        <div class="campo">
+            <label for="clave">Contraseña</label>
+            <input type="password" id="clave" name="clave" required minlength="8" autocomplete="new-password"
+                   aria-describedby="ayuda-clave">
+            <span class="ayuda" id="ayuda-clave">Usa al menos 8 caracteres.</span>
+        </div>
+        <div class="campo">
+            <label for="clave2">Repite la contraseña</label>
+            <input type="password" id="clave2" name="clave2" required minlength="8" autocomplete="new-password">
+        </div>
+        <div class="fila"><button type="submit" class="boton">Crear administrador</button></div>
     </form>
 </div>
 <?php require __DIR__ . '/includes/footer.php';

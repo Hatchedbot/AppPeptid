@@ -58,13 +58,22 @@ if (!$nuevo) {
     $titulo = $campana['nombre'];
     require __DIR__ . '/includes/header.php';
     ?>
-    <p><a href="mensajes.php">Volver a mensajes</a></p>
-    <h1><?= e($titulo) ?></h1>
-    <p><?= e($avance['enviados']) ?> enviados, <?= e($avance['pendientes']) ?> pendientes,
-        <?= e($avance['omitidos']) ?> omitidos de <?= e($avance['total']) ?> mensajes.</p>
+    <div class="encabezado">
+        <div>
+            <h1><?= e($titulo) ?></h1>
+            <p class="suave">Avance de <?= e($avance['total']) ?> mensajes</p>
+        </div>
+        <a class="boton boton-sec" href="mensajes.php">Volver a mensajes</a>
+    </div>
+    <section class="tarjeta">
+        <h2>Avance</h2>
+        <span class="etiqueta etiqueta-ok"><?= e($avance['enviados']) ?> enviados</span>
+        <span class="etiqueta etiqueta-alerta"><?= e($avance['pendientes']) ?> pendientes</span>
+        <span class="etiqueta"><?= e($avance['omitidos']) ?> omitidos</span>
+    </section>
     <?php if ($siguiente): ?>
         <article class="tarjeta">
-            <h2><?= e($siguiente['nombre']) ?></h2>
+            <h2>Mensaje para <?= e($siguiente['nombre']) ?></h2>
             <p><?= nl2br(e($siguiente['texto'])) ?></p>
             <p class="suave">Toca Enviar en WhatsApp. Al abrirlo, la campaña avanza al siguiente mensaje.</p>
             <form method="post" class="formulario" id="envio" action="<?= e($ruta) ?>">
@@ -72,7 +81,7 @@ if (!$nuevo) {
                 <input type="hidden" name="mensaje_id" value="<?= e($siguiente['id']) ?>">
                 <div class="fila">
                     <button class="boton" name="accion" value="enviado" formtarget="_blank">Abrir WhatsApp</button>
-                    <button class="boton boton-sec" name="accion" value="omitido">Omitir</button>
+                    <button class="boton boton-sec" name="accion" value="omitido">Omitir mensaje</button>
                 </div>
             </form>
             <noscript><p>Al volver de WhatsApp, recarga esta página para ver el siguiente mensaje.</p></noscript>
@@ -108,7 +117,11 @@ if (!$nuevo) {
         });
         </script>
     <?php else: ?>
-        <p class="tarjeta">La campaña terminó.</p>
+        <section class="tarjeta">
+            <h2>Campaña terminada</h2>
+            <p class="suave">Ya revisaste todos los mensajes. Puedes crear una nueva campaña.</p>
+            <a class="boton" href="campana.php?nuevo=1">Nueva campaña</a>
+        </section>
     <?php endif; ?>
     <?php
     require __DIR__ . '/includes/footer.php';
@@ -185,11 +198,17 @@ try {
 $titulo = $individual ? 'Escribir a un cliente' : 'Nueva campaña';
 require __DIR__ . '/includes/header.php';
 ?>
-<p><a href="mensajes.php">Volver a mensajes</a></p>
-<h1><?= e($titulo) ?></h1>
+<div class="encabezado">
+    <div>
+        <h1><?= e($titulo) ?></h1>
+        <p class="suave"><?= $individual ? 'Elige un cliente y prepara su mensaje de WhatsApp.' : 'Elige los destinatarios y prepara el mensaje de WhatsApp.' ?></p>
+    </div>
+    <a class="boton boton-sec" href="mensajes.php">Volver a mensajes</a>
+</div>
 <?php if (!$individual): ?>
-    <form method="get" class="tarjeta formulario" action="campana.php" id="filtros">
+    <form method="get" class="tarjeta formulario" action="campana.php" id="filtros" autocomplete="off">
         <input type="hidden" name="nuevo" value="1">
+        <h2>Buscar destinatarios</h2>
         <div class="fila">
             <div class="campo">
                 <label for="filtro">Filtro de destinatarios</label>
@@ -200,20 +219,24 @@ require __DIR__ . '/includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="campo" id="filtro-producto">
-                <label for="producto_id">Producto</label>
-                <select name="producto_id" id="producto_id">
-                    <option value="">Elige un producto</option>
-                    <?php foreach ($productos as $producto): ?>
-                        <option value="<?= e($producto['id']) ?>" <?= (int) $opciones['producto_id'] === (int) $producto['id'] ? 'selected' : '' ?>>
-                            <?= e(trim($producto['nombre'] . ' ' . $producto['presentacion'])) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div id="filtro-producto">
+                <div class="campo">
+                    <label for="producto_id">Producto</label>
+                    <select name="producto_id" id="producto_id">
+                        <option value="">Elige un producto</option>
+                        <?php foreach ($productos as $producto): ?>
+                            <option value="<?= e($producto['id']) ?>" <?= (int) $opciones['producto_id'] === (int) $producto['id'] ? 'selected' : '' ?>>
+                                <?= e(trim($producto['nombre'] . ' ' . $producto['presentacion'])) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
-            <div class="campo" id="filtro-dias">
-                <label for="dias">Días sin pedidos</label>
-                <input id="dias" name="dias" inputmode="numeric" value="<?= e($opciones['dias']) ?>">
+            <div id="filtro-dias">
+                <div class="campo">
+                    <label for="dias">Días sin pedidos</label>
+                    <input type="text" id="dias" name="dias" inputmode="numeric" value="<?= e($opciones['dias']) ?>">
+                </div>
             </div>
         </div>
         <div><button class="boton" type="submit">Buscar destinatarios</button></div>
@@ -224,7 +247,7 @@ require __DIR__ . '/includes/header.php';
         for (const [id, tipo] of [['producto_id', 'producto'], ['dias', 'sin_pedidos']]) {
             const campo = document.getElementById(id);
             const mostrar = filtroCampana.value === tipo;
-            campo.parentElement.style.display = mostrar ? '' : 'none';
+            campo.closest('[id^="filtro-"]').hidden = !mostrar;
             campo.disabled = !mostrar;
             campo.required = mostrar;
         }
@@ -235,12 +258,13 @@ require __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <?php if ($error !== ''): ?>
-    <p class="tarjeta" role="alert"><?= e($error) ?></p>
+    <p class="aviso aviso-error" role="alert"><?= e($error) ?></p>
 <?php endif; ?>
 <?php if ($destinatarios): ?>
     <?php $marcados = array_fill_keys($seleccion, true); ?>
-    <form method="post" class="tarjeta formulario" action="<?= e($ruta) ?>" id="redactar">
+    <form method="post" class="tarjeta formulario" action="<?= e($ruta) ?>" id="redactar" autocomplete="off">
         <?= campo_csrf() ?>
+        <h2>Redactar mensaje</h2>
         <?php if ($individual): ?>
             <div class="campo">
                 <label for="cliente">Cliente</label>
@@ -259,11 +283,15 @@ require __DIR__ . '/includes/header.php';
                 <div class="fila">
                     <?php foreach ($destinatarios as $cliente): ?>
                         <div class="campo">
-                            <label for="cliente-<?= e($cliente['id']) ?>">
+                            <label class="casilla boton-texto" for="cliente-<?= e($cliente['id']) ?>">
                                 <input type="checkbox" name="clientes[]" id="cliente-<?= e($cliente['id']) ?>"
                                        value="<?= e($cliente['id']) ?>" <?= isset($marcados[$cliente['id']]) ? 'checked' : '' ?>>
-                                <?= e($cliente['nombre']) ?>
-                                <?= telefono_sirve_whatsapp($cliente['telefono']) ? '' : '(sin celular válido)' ?>
+                                <span>
+                                    <?= e($cliente['nombre']) ?>
+                                    <?php if (!telefono_sirve_whatsapp($cliente['telefono'])): ?>
+                                        (sin celular válido)
+                                    <?php endif; ?>
+                                </span>
                             </label>
                         </div>
                     <?php endforeach; ?>
@@ -271,7 +299,7 @@ require __DIR__ . '/includes/header.php';
             </fieldset>
             <div class="campo">
                 <label for="nombre">Nombre de la campaña</label>
-                <input id="nombre" name="nombre" value="<?= e($nombre) ?>" maxlength="120" required>
+                <input type="text" id="nombre" name="nombre" value="<?= e($nombre) ?>" maxlength="120" required>
             </div>
         <?php endif; ?>
         <div class="fila">
@@ -290,8 +318,9 @@ require __DIR__ . '/includes/header.php';
         </div>
         <div class="campo">
             <label for="texto">Texto del mensaje</label>
-            <textarea id="texto" name="texto" rows="5" maxlength="4000" required><?= e($texto) ?></textarea>
-            <small>Marcadores disponibles: {nombre}, {producto}, {guia}, {transportadora}, {total}, {enlace} y {fecha}.</small>
+            <textarea id="texto" name="texto" rows="5" maxlength="4000" required
+                      aria-describedby="ayuda-texto"><?= e($texto) ?></textarea>
+            <span class="ayuda" id="ayuda-texto">Marcadores disponibles: {nombre}, {producto}, {guia}, {transportadora}, {total}, {enlace} y {fecha}.</span>
         </div>
         <?php if ($previa): ?>
             <div class="tarjeta" aria-live="polite">
@@ -318,6 +347,15 @@ require __DIR__ . '/includes/header.php';
         </script>
     <?php endif; ?>
 <?php elseif ($filtro !== '' && $error === ''): ?>
-    <p class="tarjeta">No encontré destinatarios.</p>
+    <section class="tarjeta">
+        <h2>Sin destinatarios</h2>
+        <?php if ($individual): ?>
+            <p class="suave">Cuando haya clientes activos podrás elegir a quién escribirle.</p>
+            <a class="boton boton-sec" href="mensajes.php">Volver a mensajes</a>
+        <?php else: ?>
+            <p class="suave">Prueba otro filtro para encontrar destinatarios.</p>
+            <a class="boton boton-sec" href="#filtro">Cambiar filtro</a>
+        <?php endif; ?>
+    </section>
 <?php endif; ?>
 <?php require __DIR__ . '/includes/footer.php';
