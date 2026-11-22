@@ -104,7 +104,7 @@ De seis lanzamientos de interfaz, solo Codex entregó a la primera. Antes de dar
 | Agente | Qué pasó | Qué hacer |
 |---|---|---|
 | Antigravity | «Antigravity isn't signed in» | Que el usuario entre en Settings → Accounts → Antigravity → Cuenta de Google (no API key, Enterprise ni Agent Platform) |
-| Antigravity | Con la variable de Windows `GEMINI_API_KEY` definida, la usa antes que la cuenta de Google: no gasta el plan del usuario sino la clave, y `/usage` falla | Dejar `GEMINI_API_KEY` vacía solo para Antigravity en la configuración de agentes de Orca; no borrarla de Windows (la usan last30days y Crush) |
+| Antigravity | Usaba la clave `GEMINI_API_KEY` en vez de la cuenta de Google, y `/usage` fallaba. La causa era `"modelProvider": "gemini"` en `~/.gemini/antigravity-cli/settings.json`, no la variable | Quitar `modelProvider` de ese archivo: el registro muestra «OAuth: authenticated successfully» aunque la variable siga en Windows. No borrar la variable (la usan last30days y Crush) |
 | Antigravity | «Actualizar» del runtime falla con `EPERM ... rename` | Cerrar sus pestañas de chat en Orca (sus procesos bloquean la carpeta) y reintentar; si sigue, reiniciar Orca cuando no haya trabajadores |
 | Cursor | Un hook preToolUse roto (PowerShell dentro de bash) le impidió leer y escribir; además intentó bajar el código de GitHub | Relevar a Codex; revisar los hooks de Cursor antes de volver a usarlo |
 | Kilo | `orca agent launch` lo abre en una terminal sin entregar el encargo; enviado con `orca terminal send`, el texto se corta en los `<` | Guardar el encargo en `ENCARGO.txt` del worktree (añadido a `.git/info/exclude`) y enviar solo «Lee ENCARGO.txt y cúmplelo» |
