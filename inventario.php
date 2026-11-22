@@ -195,6 +195,7 @@ require __DIR__ . '/includes/header.php';
         <h1>Inventario</h1>
         <p class="suave">Existencias por lote, entradas y ajustes. El stock se descuenta del lote que vence primero.</p>
     </div>
+    <a class="boton" href="#entrada">Registrar entrada</a>
 </div>
 
 <section class="tarjeta">
@@ -207,7 +208,7 @@ require __DIR__ . '/includes/header.php';
             <ul class="lista">
                 <?php foreach ($alertas['stock_bajo'] as $p): ?>
                     <li>
-                        <a href="producto.php?id=<?= (int) $p['id'] ?>"><strong><?= e($p['nombre']) ?> · <?= e($p['presentacion']) ?></strong></a>
+                        <a class="boton boton-sec" href="producto.php?id=<?= (int) $p['id'] ?>"><?= e($p['nombre']) ?> · <?= e($p['presentacion']) ?></a>
                         <span class="etiqueta <?= (int) $p['stock'] <= 0 ? 'etiqueta-error' : 'etiqueta-alerta' ?>">
                             <?= (int) $p['stock'] <= 0 ? 'Agotado' : 'Quedan ' . (int) $p['stock'] ?>
                         </span>
@@ -243,27 +244,25 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </section>
 
-<form method="get" action="inventario.php" class="tarjeta">
+<form method="get" action="inventario.php" class="tarjeta formulario">
+    <h2>Buscar productos</h2>
     <div class="campo">
-        <label for="q">Buscar</label>
-        <div class="fila">
-            <input type="search" id="q" name="q" value="<?= e($q_raw) ?>"
-                   placeholder="Nombre, presentación o categoría" autocomplete="off">
-            <button type="submit" class="boton">Buscar</button>
-        </div>
+        <label for="q">Nombre, presentación o categoría</label>
+        <input type="search" id="q" name="q" value="<?= e($q_raw) ?>" autocomplete="off">
     </div>
-    <?php if ($q_raw !== ''): ?>
-        <p class="suave">Resultados para «<?= e($q_raw) ?>». <a href="inventario.php">Ver todos</a></p>
-    <?php endif; ?>
+    <div class="fila">
+        <button type="submit" class="boton">Buscar</button>
+        <?php if ($q_raw !== ''): ?><a class="boton boton-sec" href="inventario.php">Ver todos los productos</a><?php endif; ?>
+    </div>
 </form>
 
-<section class="tarjeta">
+<section id="entrada" class="tarjeta">
     <h2>Entrada de mercancía</h2>
     <p class="suave">Suma unidades a un lote. Si el código no existe, se crea el lote.</p>
     <?php if ($error): ?>
         <div class="aviso aviso-error"><?= e($error) ?></div>
     <?php endif; ?>
-    <form method="post" class="formulario">
+    <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <div class="campo">
             <label for="producto_id">Producto *</label>
@@ -280,7 +279,8 @@ require __DIR__ . '/includes/header.php';
             <div class="campo">
                 <label for="codigo">Código del lote *</label>
                 <input type="text" id="codigo" name="codigo" maxlength="60" required
-                       value="<?= e($_POST['codigo'] ?? '') ?>" placeholder="El del vial o del COA">
+                       value="<?= e($_POST['codigo'] ?? '') ?>" aria-describedby="ayuda-codigo">
+                <span class="ayuda" id="ayuda-codigo">Escribe el código del vial o del certificado de análisis.</span>
             </div>
             <div class="campo">
                 <label for="vencimiento">Vencimiento</label>
@@ -294,9 +294,8 @@ require __DIR__ . '/includes/header.php';
                        value="<?= e($_POST['cantidad'] ?? '') ?>">
             </div>
             <div class="campo">
-                <label for="nota">Nota</label>
-                <input type="text" id="nota" name="nota" maxlength="255" value="<?= e($_POST['nota'] ?? '') ?>"
-                       placeholder="Opcional">
+                <label for="nota">Nota (opcional)</label>
+                <input type="text" id="nota" name="nota" maxlength="255" value="<?= e($_POST['nota'] ?? '') ?>">
             </div>
         </div>
         <div><button type="submit" class="boton">Guardar entrada</button></div>
@@ -311,6 +310,9 @@ require __DIR__ . '/includes/header.php';
                 ? 'No encontramos productos con «' . e($q_raw) . '». Prueba con otro nombre.'
                 : 'Todavía no hay productos. Agrega los del catálogo.' ?>
         </p>
+        <?php if ($q_raw !== ''): ?>
+            <a class="boton boton-sec" href="inventario.php">Quitar búsqueda</a>
+        <?php endif; ?>
     <?php else: ?>
         <table class="tabla tabla-movil">
             <thead>
@@ -320,16 +322,16 @@ require __DIR__ . '/includes/header.php';
             <?php foreach ($productos as $p): ?>
                 <tr>
                     <td>
-                        <a href="producto.php?id=<?= (int) $p['id'] ?>"><strong><?= e($p['nombre']) ?></strong> · <?= e($p['presentacion']) ?></a>
+                        <a class="boton boton-sec" href="producto.php?id=<?= (int) $p['id'] ?>"><?= e($p['nombre']) ?> · <?= e($p['presentacion']) ?></a>
                     </td>
-                    <td><?= e($p['categoria']) ?></td>
-                    <td><?= (int) $p['stock'] ?></td>
-                    <td><?= (int) $p['stock_minimo'] ?></td>
+                    <td><span class="suave">Categoría</span> <?= e($p['categoria']) ?></td>
+                    <td><span class="suave">Stock vigente</span> <?= (int) $p['stock'] ?></td>
+                    <td><span class="suave">Mínimo</span> <?= (int) $p['stock_minimo'] ?></td>
                     <td>
                         <?php if ($p['estado'] === 'ok'): ?>
-                            <span class="etiqueta etiqueta-ok">Ok</span>
+                            <span class="etiqueta etiqueta-ok">Disponible</span>
                         <?php elseif ($p['estado'] === 'bajo'): ?>
-                            <span class="etiqueta etiqueta-alerta">Bajo</span>
+                            <span class="etiqueta etiqueta-alerta">Stock bajo</span>
                         <?php else: ?>
                             <span class="etiqueta etiqueta-error">Agotado</span>
                         <?php endif; ?>

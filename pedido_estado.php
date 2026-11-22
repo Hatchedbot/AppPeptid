@@ -21,14 +21,22 @@ if (!$pedido) {
 </head>
 <body>
 <main class="contenido">
-    <article class="tarjeta">
-        <?php if (!$pedido): ?>
-            <h1>Pedido no encontrado</h1>
-            <p>Revisa el enlace o pídele a tu asesor que te lo comparta de nuevo.</p>
-        <?php else: ?>
-            <p class="suave"><?= e(config('app.negocio')) ?></p>
-            <h1>Pedido de <?= e($pedido['primer_nombre']) ?></h1>
-            <p><strong><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?></strong></p>
+    <?php if (!$pedido): ?>
+        <div class="encabezado">
+            <div>
+                <h1>Pedido no encontrado</h1>
+                <p class="suave">Revisa el enlace o pídele a tu asesor que te lo comparta de nuevo.</p>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="encabezado">
+            <div>
+                <h1>Pedido de <?= e($pedido['primer_nombre']) ?></h1>
+                <p class="suave"><?= e(config('app.negocio')) ?></p>
+            </div>
+            <span class="etiqueta <?= $pedido['estado'] === 'entregado' ? 'etiqueta-ok' : '' ?>"><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?></span>
+        </div>
+        <section class="tarjeta">
             <h2>Productos</h2>
             <ul class="lista">
                 <?php foreach ($pedido['items'] as $item): ?>
@@ -36,20 +44,24 @@ if (!$pedido) {
                 <?php endforeach; ?>
             </ul>
             <p>Total <strong><?= e(dinero($pedido['total'])) ?></strong></p>
-            <p>Estado del pago <strong><?= e(PEDIDO_ESTADOS_PAGO[$pedido['estado_pago']]) ?></strong></p>
-            <?php if ($pedido['guia'] !== null): ?>
+            <p><span class="etiqueta <?= $pedido['estado_pago'] === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$pedido['estado_pago']])) ?></span></p>
+        </section>
+        <?php if ($pedido['guia'] !== null): ?>
+            <section class="tarjeta">
                 <h2>Envío</h2>
                 <p>Transportadora <strong><?= e($pedido['transportadora']) ?></strong></p>
                 <p>Número de guía <strong><?= e($pedido['guia']) ?></strong></p>
-            <?php endif; ?>
-            <h2>Historial del pedido</h2>
+            </section>
+        <?php endif; ?>
+        <section class="tarjeta">
+            <h2>Historial</h2>
             <ol class="lista">
                 <?php foreach ($pedido['historial'] as $paso): ?>
                     <li><?= e(PEDIDO_ESTADOS[$paso['estado']]) ?> · <?= e(fecha_corta($paso['fecha'])) ?></li>
                 <?php endforeach; ?>
             </ol>
-        <?php endif; ?>
-    </article>
+        </section>
+    <?php endif; ?>
 </main>
 </body>
 </html>

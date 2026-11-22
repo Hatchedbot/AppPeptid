@@ -69,11 +69,23 @@ if (!$nuevo && !$pedido) {
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="encabezado">
-    <h1><?= e($titulo) ?></h1>
-    <a class="boton boton-sec" href="<?= e($editar ? $url : 'pedidos.php') ?>">Volver</a>
+    <div>
+        <h1><?= e($titulo) ?></h1>
+        <p class="suave"><?= $nuevo || $editar ? 'Completa los datos del pedido.' : ($pedido ? e($pedido['cliente']) : 'Revisa el número del pedido.') ?></p>
+    </div>
+    <div>
+        <a class="boton boton-sec" href="<?= e($editar ? $url : 'pedidos.php') ?>"><?= $editar ? 'Volver al pedido' : 'Volver a pedidos' ?></a>
+        <?php if ($pedido && !$editar && in_array($pedido['estado'], ['cotizado', 'confirmado'], true)): ?>
+            <a class="boton" href="<?= e($url) ?>&amp;editar=1">Editar pedido</a>
+        <?php endif; ?>
+    </div>
 </div>
 <?php if (!$nuevo && !$pedido): ?>
-    <p class="tarjeta">Revisa el número del pedido.</p>
+    <section class="tarjeta">
+        <h2>Buscar otro pedido</h2>
+        <p class="suave">Busca por cliente, número de pedido o guía.</p>
+        <a class="boton" href="pedidos.php#q">Ir a la búsqueda</a>
+    </section>
 <?php elseif ($nuevo || $editar):
     $datos = ($entrada['accion'] ?? '') === 'guardar' ? $entrada : [];
     $datos += $pedido ?? ['cliente_id' => $cliente, 'envio' => 25000, 'descuento' => 0];
@@ -86,13 +98,14 @@ require __DIR__ . '/includes/header.php';
             [$pedido['cliente_id']])->fetchAll();
     $productos = pedido_consulta('SELECT id, nombre, presentacion, precio, activo FROM productos ORDER BY nombre, id', [])->fetchAll();
     $campos = [
-        'envio' => ['Envío (pesos)', 'numeric', 14],
-        'descuento' => ['Descuento (pesos)', 'numeric', 14],
-        'direccion' => ['Dirección de entrega', 'text', 255],
-        'ciudad' => ['Ciudad', 'text', 80],
+        'envio' => ['Envío (pesos)', 'numeric', 14, 'off'],
+        'descuento' => ['Descuento (pesos)', 'numeric', 14, 'off'],
+        'direccion' => ['Dirección de entrega', 'text', 255, 'shipping street-address'],
+        'ciudad' => ['Ciudad', 'text', 80, 'shipping address-level2'],
     ];
 ?>
-    <form method="post" class="tarjeta formulario">
+    <form method="post" class="tarjeta formulario" autocomplete="off">
+        <h2>Cliente y proceso</h2>
         <?= campo_csrf() ?>
         <?php if ($nuevo): ?>
             <div class="campo">
@@ -125,7 +138,7 @@ require __DIR__ . '/includes/header.php';
         <div id="pedido-items" class="formulario">
             <?php foreach ([...($filas ?: [[]]), null] as $i => $item): ?>
                 <?php if ($item === null): ?></div><template id="plantilla-item"><?php endif; ?>
-                <fieldset class="formulario">
+                <fieldset class="tarjeta formulario">
                     <legend>Producto</legend>
                     <div class="campo">
                         <label for="producto-<?= e($i) ?>" data-campo="producto_id">Producto del catálogo</label>
@@ -146,26 +159,28 @@ require __DIR__ . '/includes/header.php';
                     <div class="fila">
                         <div class="campo">
                             <label for="cantidad-<?= e($i) ?>" data-campo="cantidad">Cantidad</label>
-                            <input id="cantidad-<?= e($i) ?>" name="items[<?= e($i) ?>][cantidad]"
+                            <input type="text" id="cantidad-<?= e($i) ?>" name="items[<?= e($i) ?>][cantidad]"
                                    data-campo="cantidad" inputmode="numeric" value="<?= e($item['cantidad'] ?? 1) ?>" required>
                         </div>
                         <div class="campo">
                             <label for="precio-<?= e($i) ?>" data-campo="precio_unitario">Precio unitario (pesos)</label>
-                            <input id="precio-<?= e($i) ?>" name="items[<?= e($i) ?>][precio_unitario]"
+                            <input type="text" id="precio-<?= e($i) ?>" name="items[<?= e($i) ?>][precio_unitario]"
                                    data-campo="precio_unitario" inputmode="numeric" value="<?= e($item['precio_unitario'] ?? '') ?>">
                             <span class="ayuda">Déjalo vacío para usar el precio del catálogo.</span>
                         </div>
                     </div>
-                    <button type="button" class="boton boton-sec" data-quitar>Quitar producto</button>
+                    <div><button type="button" class="boton boton-peligro" data-quitar>Quitar producto</button></div>
                 </fieldset>
                 <?php if ($item === null): ?></template><?php endif; ?>
             <?php endforeach; ?>
-        <button type="button" id="agregar-item" class="boton boton-sec">Agregar producto</button>
+        <div><button type="button" id="agregar-item" class="boton boton-sec">Agregar producto</button></div>
+        <h2>Entrega y cobro</h2>
         <div class="fila">
-            <?php foreach ($campos as $campo => [$etiqueta, $modo, $maximo]): ?>
+            <?php foreach ($campos as $campo => [$etiqueta, $modo, $maximo, $autocompletar]): ?>
                 <div class="campo">
                     <label for="<?= e($campo) ?>"><?= e($etiqueta) ?></label>
-                    <input id="<?= e($campo) ?>" name="<?= e($campo) ?>" inputmode="<?= e($modo) ?>" maxlength="<?= e($maximo) ?>"
+                    <input type="text" id="<?= e($campo) ?>" name="<?= e($campo) ?>" inputmode="<?= e($modo) ?>" maxlength="<?= e($maximo) ?>"
+                           autocomplete="<?= e($autocompletar) ?>"
                            value="<?= e($datos[$campo] ?? '') ?>" <?= $modo === 'numeric' ? 'required' : '' ?>>
                 </div>
             <?php endforeach; ?>
@@ -175,8 +190,10 @@ require __DIR__ . '/includes/header.php';
             <textarea id="notas" name="notas" maxlength="16383"><?= e($datos['notas'] ?? '') ?></textarea>
         </div>
         <div>
-            <input id="contraentrega" name="contraentrega" type="checkbox" value="1" <?= !empty($datos['contraentrega']) ? 'checked' : '' ?>>
-            <label for="contraentrega">Cobrar contraentrega</label>
+            <label for="contraentrega" class="boton boton-sec">
+                <input id="contraentrega" name="contraentrega" type="checkbox" value="1" <?= !empty($datos['contraentrega']) ? 'checked' : '' ?>>
+                Cobrar contraentrega
+            </label>
         </div>
         <button class="boton" name="accion" value="guardar">Guardar pedido</button>
     </form>
@@ -221,6 +238,7 @@ require __DIR__ . '/includes/header.php';
             });
             items.addEventListener('click', (evento) => {
                 if (evento.target.matches('[data-quitar]') && items.children.length > 1) {
+                    if (!confirm('¿Quitar este producto del pedido?')) return;
                     evento.target.closest('fieldset').remove();
                     actualizarBotones();
                     document.querySelector('#agregar-item').focus();
@@ -252,15 +270,9 @@ require __DIR__ . '/includes/header.php';
     $despacho = ($entrada['accion'] ?? '') === 'estado' ? $entrada : [];
 ?>
     <section class="tarjeta">
-        <div class="encabezado">
-            <div>
-                <h2><?= e($pedido['cliente']) ?></h2>
-                <p><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?> · <?= e(fecha_corta($pedido['creado'])) ?></p>
-            </div>
-            <?php if (in_array($pedido['estado'], ['cotizado', 'confirmado'], true)): ?>
-                <a class="boton boton-sec" href="<?= e($url) ?>&amp;editar=1">Editar pedido</a>
-            <?php endif; ?>
-        </div>
+        <h2>Resumen</h2>
+        <p><span class="etiqueta <?= $pedido['estado'] === 'entregado' ? 'etiqueta-ok' : '' ?>"><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?></span>
+            <span class="suave"> · Creado el <?= e(fecha_corta($pedido['creado'])) ?></span></p>
         <ul class="lista">
             <?php foreach ($items as $item): ?>
                 <li>
@@ -296,20 +308,22 @@ require __DIR__ . '/includes/header.php';
                 'entregado' => 'Marcar como entregado', 'devuelto' => 'Registrar devolución', 'despachado' => 'Despachar pedido']; ?>
             <div class="fila">
                 <?php foreach ($pendientes as $paso): ?>
-                    <form method="post" class="formulario">
+                    <form method="post" class="formulario" autocomplete="off"
+                        <?= $paso === 'cancelado' ? 'onsubmit="return confirm(\'¿Cancelar este pedido?\')"' : '' ?>>
                         <?= campo_csrf() ?>
                         <input type="hidden" name="accion" value="estado">
                         <?php if ($paso === 'despachado'): ?>
                             <div class="campo">
                                 <label for="transportadora">Transportadora</label>
-                                <input id="transportadora" name="transportadora" maxlength="80" required value="<?= e($despacho['transportadora'] ?? '') ?>">
+                                <input type="text" id="transportadora" name="transportadora" maxlength="80" required value="<?= e($despacho['transportadora'] ?? '') ?>">
                             </div>
                             <div class="campo">
                                 <label for="guia">Número de guía</label>
-                                <input id="guia" name="guia" maxlength="80" required value="<?= e($despacho['guia'] ?? '') ?>">
+                                <input type="text" id="guia" name="guia" maxlength="80" required value="<?= e($despacho['guia'] ?? '') ?>">
                             </div>
                         <?php endif; ?>
-                        <button class="boton boton-sec" name="estado" value="<?= e($paso) ?>"><?= e($acciones[$paso]) ?></button>
+                        <div><button class="boton <?= $paso === 'cancelado' ? 'boton-peligro' : ($paso === 'devuelto' ? 'boton-sec' : '') ?>"
+                                     name="estado" value="<?= e($paso) ?>"><?= e($acciones[$paso]) ?></button></div>
                     </form>
                 <?php endforeach; ?>
             </div>
@@ -317,7 +331,8 @@ require __DIR__ . '/includes/header.php';
     </section>
     <section class="tarjeta">
         <h2>Pagos</h2>
-        <p><strong><?= e(PEDIDO_ESTADOS_PAGO[$estado_pago]) ?></strong> · Total registrado <?= e(dinero(array_sum(array_column($pagos, 'valor')))) ?></p>
+        <p><span class="etiqueta <?= $estado_pago === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$estado_pago])) ?></span>
+            · Total registrado <?= e(dinero(array_sum(array_column($pagos, 'valor')))) ?></p>
         <?php if ($pagos): ?>
             <ul class="lista">
                 <?php foreach ($pagos as $registro): ?>
@@ -328,8 +343,10 @@ require __DIR__ . '/includes/header.php';
                     </li>
                 <?php endforeach; ?>
             </ul>
+        <?php else: ?>
+            <p class="suave">Aún no hay pagos. Registra el primero con este formulario.</p>
         <?php endif; ?>
-        <form method="post" class="formulario">
+        <form method="post" class="formulario" autocomplete="off">
             <?= campo_csrf() ?>
             <div class="fila">
                 <div class="campo">
@@ -345,8 +362,8 @@ require __DIR__ . '/includes/header.php';
                 </div>
                 <div class="campo">
                     <label for="valor">Valor (pesos)</label>
-                    <input id="valor" name="valor" maxlength="15" required value="<?= e($pago['valor'] ?? '') ?>">
-                    <span class="ayuda">Para una devolución de dinero, escribe un valor negativo.</span>
+                    <input type="text" id="valor" name="valor" maxlength="15" required value="<?= e($pago['valor'] ?? '') ?>" aria-describedby="ayuda-valor">
+                    <span class="ayuda" id="ayuda-valor">Para una devolución de dinero, escribe un valor negativo.</span>
                 </div>
                 <div class="campo">
                     <label for="fecha">Fecha del pago</label>
@@ -354,7 +371,7 @@ require __DIR__ . '/includes/header.php';
                 </div>
                 <div class="campo">
                     <label for="referencia">Referencia (opcional)</label>
-                    <input id="referencia" name="referencia" maxlength="80" value="<?= e($pago['referencia'] ?? '') ?>">
+                    <input type="text" id="referencia" name="referencia" maxlength="80" value="<?= e($pago['referencia'] ?? '') ?>">
                 </div>
             </div>
             <button class="boton" name="accion" value="pago">Registrar pago</button>
