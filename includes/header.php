@@ -38,19 +38,23 @@ $iconos = [
 <link rel="stylesheet" href="assets/estilos.css?v=<?= @filemtime(RAIZ . '/assets/estilos.css') ?>">
 </head>
 <body>
+<?php /* Liquid Glass: filtros de refracción (los usa estilos.css en Chrome/Edge) y luz de fondo de la marca. */ ?>
+<svg class="lg-filtros" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="lg-refraccion" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="2" seed="11" result="ruido"/>
+        <feGaussianBlur in="ruido" stdDeviation="2.5" result="mapa"/>
+        <feDisplacementMap in="SourceGraphic" in2="mapa" scale="46" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="lg-lente" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="1" seed="4" result="ruido"/>
+        <feGaussianBlur in="ruido" stdDeviation="1.5" result="mapa"/>
+        <feDisplacementMap in="SourceGraphic" in2="mapa" scale="70" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+</svg>
+<div class="fondo-liquido" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 <?php if ($u): ?>
 <header class="barra">
     <a class="marca" href="index.php"><span class="marca-punto" aria-hidden="true"></span><?= e(config('app.nombre')) ?></a>
-    <nav class="menu" aria-label="Menú principal">
-        <?php foreach ($menu as $clave => [$archivo, $texto, $permiso]): ?>
-            <?php if (is_file(RAIZ . '/' . $archivo) && ($permiso === null || puede($permiso))): ?>
-                <a href="<?= e($archivo) ?>" class="<?= $activo === $clave ? 'activo' : '' ?>"<?= $activo === $clave ? ' aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?= $iconos[$clave] ?></svg>
-                    <span><?= e($texto) ?></span>
-                </a>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    </nav>
     <form method="post" action="logout.php" class="salir">
         <?= campo_csrf() ?>
         <?php $nombre_corto = primer_nombre($u['nombre']); ?>
@@ -61,6 +65,17 @@ $iconos = [
         <button type="submit" class="boton-texto">Salir</button>
     </form>
 </header>
+<?php /* El menú va fuera de la barra: el vidrio solo refracta lo que tiene detrás si no está dentro de otra capa. */ ?>
+<nav class="menu" aria-label="Menú principal">
+        <?php foreach ($menu as $clave => [$archivo, $texto, $permiso]): ?>
+            <?php if (is_file(RAIZ . '/' . $archivo) && ($permiso === null || puede($permiso))): ?>
+                <a href="<?= e($archivo) ?>" class="<?= $activo === $clave ? 'activo' : '' ?>"<?= $activo === $clave ? ' aria-current="page"' : '' ?>>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?= $iconos[$clave] ?></svg>
+                    <span><?= e($texto) ?></span>
+                </a>
+            <?php endif; ?>
+        <?php endforeach; ?>
+</nav>
 <?php endif; ?>
 <main class="contenido">
 <?php foreach (tomar_avisos() as $a): ?>
