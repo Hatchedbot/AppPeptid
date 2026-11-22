@@ -56,7 +56,7 @@ Los precios y cuotas de estas herramientas cambian cada pocas semanas. No compro
 |---|---|---|---|
 | **Auggie** | El mejor entendiendo repos muy grandes gracias a su motor de contexto; lideraba SWE-Bench Pro a inicios de 2026 [reseña]. No entrena con tu código en planes de pago [oficial]. | Sin plan gratis: prueba de 30.000 créditos que pide tarjeta. Gasto de créditos impredecible [reseña]. | 20 USD/mes. |
 | **Droid** | Un solo agente con muchos modelos; modo especificación; al agotar la cuota puedes seguir con modelos abiertos [reseña]. | Las fuentes se contradicen sobre si hay plan gratis con clave propia. Factory cambió los planes tres veces en un año [reseña]. | 20 USD/mes. |
-| **Kimi** | Su modelo K3 está entre los mejores abiertos en programación [reseña]. | El CLI es gratis pero el uso del modelo no; es lento y verboso [reseña]. | 99 yuanes/mes. |
+| **Kimi** | Su modelo K3 está entre los mejores abiertos en programación [reseña]. | El CLI es gratis pero el uso del modelo no; es lento y verboso [reseña]. | Kimi Code desde USD 19/mes (Plus), USD 39 (Pro), 99 (Max), 199 (Ultra); con pago anual, 15/31/79/159. Sin cifras de uso publicadas [oficial, 22 nov 2026]. |
 | **Rovo** | Integración con Jira y Confluence. | El plan gratis de Jira no incluye Rovo; usuarios reportan que los créditos duran muy poco [reseña]. | Depende del plan de Atlassian. |
 | **Codebuff** | Versión de pago de Freebuff, con mejores modelos. | Pagas por lo mismo que Freebuff da con anuncios. | De pago. |
 | **Qwen Code** | Buen agente, derivado de Gemini CLI. | Perdió su plan gratuito en abril de 2026 [oficial]. | Clave de pago, o una clave de OpenRouter como servicio compatible con OpenAI. |

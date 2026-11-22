@@ -109,7 +109,7 @@ De seis lanzamientos de interfaz, solo Codex entregó a la primera. Antes de dar
 | Cursor | Un hook preToolUse roto (PowerShell dentro de bash) le impidió leer y escribir; además intentó bajar el código de GitHub | Relevar a Codex; revisar los hooks de Cursor antes de volver a usarlo |
 | Kilo | `orca agent launch` lo abre en una terminal sin entregar el encargo; enviado con `orca terminal send`, el texto se corta en los `<` | Guardar el encargo en `ENCARGO.txt` del worktree (añadido a `.git/info/exclude`) y enviar solo «Lee ENCARGO.txt y cúmplelo» |
 | Kilo | Se queda esperando «Permission required» en cada comando y nadie lo aprueba | No usarlo sin supervisión desde Orca hasta configurar sus permisos automáticos |
-| Kimi | «Your current subscription does not have access to Kimi Code»: la sesión está iniciada, pero la cuenta no tiene el plan de pago Kimi Code | No tiene puesto mientras no haya suscripción; además sus datos quedan bajo leyes de China |
+| Kimi | «Your current subscription does not have access to Kimi Code»: la sesión está iniciada, pero la cuenta no tiene el plan de pago Kimi Code | Joan decidió prescindir de él (22 nov 2026): cuesta desde USD 19/mes, no publica cuánto rinde y sus datos quedan bajo leyes de China. No lo propongas como relevo |
 | OpenCode | «This request would exceed your available credits» a mitad de tarea, con cambios sin commit | Relevar conservando el diff; el relevo debe revisar lo heredado (Codex encontró un error que dejó OpenCode) |
 
 ## Caducidad
