@@ -200,189 +200,183 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 }
 
 /* ==========================================================================
-   Liquid Glass (Apple, iOS 26). No es solo blur: es un material que
-   1) refracta lo de atrás (filtro SVG #lg-refraccion, solo Chrome/Edge),
-   2) tiene bordes de luz y grosor (brillo arriba, sombra interna abajo),
-   3) casi no se esmerila (blur bajo, mucha saturación),
-   4) se apoya en un fondo de color vivo, y
-   5) se mueve como líquido (brillo que sigue al dedo, rebote, lente que se desliza).
-   Va en navegación y controles; el contenido (formularios, tablas, listas) queda opaco.
+   Liquid Glass (Apple, iOS 26)
    ========================================================================== */
 :root {
-  --lg-tinte: rgba(255, 255, 255, .22);
-  --lg-tinte-fuerte: rgba(255, 255, 255, .55);
-  --lg-borde: rgba(255, 255, 255, .55);
-  --lg-blur: blur(5px) saturate(190%) brightness(1.06);
-  --lg-blur-fuerte: blur(14px) saturate(180%) brightness(1.04);
-  --lg-canto: inset 1.5px 1.5px 0 rgba(255, 255, 255, .95), inset -1px -1px 0 rgba(255, 255, 255, .35),
-    inset 0 0 14px rgba(255, 255, 255, .45), inset 0 -12px 22px -14px rgba(23, 33, 80, .30);
-  --lg-sombra: 0 12px 32px rgba(23, 33, 80, .18), 0 2px 6px rgba(23, 33, 80, .10);
-  --lg-resorte: cubic-bezier(.34, 1.56, .64, 1);
+  --vidrio-claro: rgba(255, 255, 255, .44);
+  --vidrio-espeso: rgba(255, 255, 255, .8);
+  --vidrio-casi-opaco: #fafbff;
+  --vidrio-borde: rgba(255, 255, 255, .65);
+  --lente-tinte: rgba(239, 248, 255, .88);
+  --lente-borde: rgba(255, 255, 255, .9);
+  --lente-sombra: 0 3px 10px rgba(23, 33, 80, .12), inset 0 1px 0 var(--superficie);
+  --luz-vidrio: rgba(255, 255, 255, .55);
+  --luz-superior: rgba(255, 255, 255, .28);
+  --luz-extremo: rgba(255, 255, 255, .38);
+  --fondo-liquido: #eef1fb;
+  --fondo-lila: #f3f0ff;
+  --fondo-celeste: #e6f1ff;
+  --fondo-calido: #f6efe6;
+  --mancha-indigo: #8b9ae6;
+  --mancha-rosa: #f2c9e4;
+  --portada-indigo: rgba(50, 69, 147, .8);
+  --portada-noche: rgba(23, 33, 80, .86);
+  --lia-luz: rgba(158, 213, 253, .55);
+  --lia-mensajes: rgba(246, 247, 252, .7);
+  --lg-blur: blur(16px) saturate(200%) brightness(1.04);
+  --lg-canto: inset 0 1px 0 0 rgba(255, 255, 255, .8), inset 0 0 0 .5px rgba(255, 255, 255, .4);
+  --lg-sombra: 0 8px 24px -4px rgba(23, 33, 80, .12), 0 2px 6px -1px rgba(23, 33, 80, .05);
+  --lg-curva: cubic-bezier(.2,.9,.3,1);
+  --lg-viaje: 220ms;
+  --foco-sistema: Highlight;
+  --borde-sistema: CanvasText;
 }
 
-/* 4) Fondo vivo con luz de la marca que flota despacio */
-body { background: #eef1fb; }
-.lg-filtros { position: absolute; width: 0; height: 0; overflow: hidden; }
+body { background: var(--fondo-liquido); letter-spacing: 0; }
+h1 { letter-spacing: -.02em; }
 .fondo-liquido { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
-  background: linear-gradient(160deg, #f3f0ff 0%, #e6f1ff 45%, #f6efe6 100%); }
-.fondo-liquido span { position: absolute; border-radius: 50%; filter: blur(48px); opacity: .85; will-change: transform;
-  animation: lg-flotar 26s ease-in-out infinite alternate; }
-.fondo-liquido span:nth-child(1) { width: 62vmax; height: 62vmax; left: -18vmax; top: -22vmax; background: #9ed5fd; }
-.fondo-liquido span:nth-child(2) { width: 50vmax; height: 50vmax; right: -16vmax; top: 18vh; background: #8b9ae6; animation-duration: 32s; animation-delay: -8s; }
-.fondo-liquido span:nth-child(3) { width: 46vmax; height: 46vmax; left: 10vw; bottom: -24vmax; background: #f2c9e4; animation-duration: 38s; animation-delay: -14s; }
-.fondo-liquido span:nth-child(4) { width: 30vmax; height: 30vmax; right: 12vw; bottom: 8vh; background: #ffe3b8; opacity: .7; animation-duration: 29s; animation-delay: -4s; }
-@keyframes lg-flotar {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(6vw, 4vh, 0) scale(1.08); }
-  100% { transform: translate3d(-4vw, 7vh, 0) scale(.95); }
+  background: linear-gradient(160deg, var(--fondo-lila), var(--fondo-celeste) 45%, var(--fondo-calido)); }
+.fondo-liquido span { position: absolute; border-radius: 50%; filter: blur(40px); opacity: .85; }
+.fondo-liquido span:nth-child(1) { width: 62vmax; height: 62vmax; left: -18vmax; top: -22vmax; background: var(--celeste); }
+.fondo-liquido span:nth-child(2) { width: 50vmax; height: 50vmax; right: -16vmax; top: 18vh; background: var(--mancha-indigo); }
+.fondo-liquido span:nth-child(3) { width: 46vmax; height: 46vmax; left: 10vw; bottom: -24vmax; background: var(--mancha-rosa); }
+
+.tarjeta { border-color: var(--lente-borde); box-shadow: var(--lg-canto), var(--lg-sombra); }
+
+.barra, .menu, .rejilla-cifras .tarjeta, #lia-raiz .lia-panel {
+  background: var(--vidrio-casi-opaco); border: .5px solid var(--vidrio-borde);
+  color: var(--noche); box-shadow: var(--lg-canto), var(--lg-sombra);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .barra, .menu, .rejilla-cifras .tarjeta, #lia-raiz .lia-panel {
+    background: var(--vidrio-claro);
+    -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  }
+  #lia-raiz .lia-panel { background: var(--vidrio-espeso); }
 }
 
-/* Contenido: tarjetas opacas y nítidas, con un canto de luz fino */
-.tarjeta { background: rgba(255, 255, 255, .94); border-color: rgba(255, 255, 255, .9);
-  box-shadow: 0 1px 2px rgba(23, 33, 80, .05), 0 8px 24px rgba(23, 33, 80, .07), inset 0 1px 0 #fff; }
-
-/* El material: base común de todas las piezas de vidrio */
-.menu, .portada, .rejilla-cifras .tarjeta, .portada .boton, #lia-raiz .lia-flotante, #lia-raiz .lia-panel {
-  -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
-}
-.lg-refracta .barra, .lg-refracta #lia-raiz .lia-flotante, .lg-refracta .portada {
-  backdrop-filter: url(#lg-refraccion) var(--lg-blur);
-}
-
-.lg-refracta .menu { backdrop-filter: url(#lg-refraccion) blur(10px) saturate(190%) brightness(1.06); }
-
-/* 2) y 5) Reflejo especular que sigue al puntero (variables --lg-x/--lg-y las pone app.js) */
+.barra, .menu, .portada, .rejilla-cifras .tarjeta, #lia-raiz .lia-flotante { isolation: isolate; }
+.barra { border-bottom: 0; }
 .menu::after, .barra::after, .portada::after, .rejilla-cifras .tarjeta::after, #lia-raiz .lia-flotante::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background:
-    radial-gradient(160px circle at var(--lg-x, 22%) var(--lg-y, 0%), rgba(255, 255, 255, .55), transparent 65%),
-    linear-gradient(180deg, rgba(255, 255, 255, .28), transparent 42%);
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(160px circle at var(--lg-x, 50%) var(--lg-y, 0%), var(--luz-vidrio), transparent 65%),
+    linear-gradient(var(--luz-superior), transparent 42%);
   mix-blend-mode: soft-light;
 }
-
-/* Barra superior: vidrio «regular», más esmerilado para que el texto que pasa debajo no estorbe.
-   El menú ya no vive dentro de la barra, así que el vidrio puede ir en la barra misma. */
-.barra { isolation: isolate; border-bottom: 0; background: rgba(255, 255, 255, .58);
-  -webkit-backdrop-filter: var(--lg-blur-fuerte); backdrop-filter: var(--lg-blur-fuerte);
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .8), 0 1px 0 rgba(23, 33, 80, .06), 0 8px 24px rgba(23, 33, 80, .07); }
-.lg-refracta .barra { backdrop-filter: url(#lg-refraccion) var(--lg-blur-fuerte); }
-.barra::after { z-index: -1; }
-
-/* Menú: cápsula de vidrio con lente deslizante */
-.menu { position: relative; isolation: isolate; border-radius: 999px; padding: .3rem; gap: .15rem; flex: 0 1 auto;
-  background: rgba(255, 255, 255, .34); -webkit-backdrop-filter: blur(10px) saturate(190%) brightness(1.06); backdrop-filter: blur(10px) saturate(190%) brightness(1.06); border: 1px solid var(--lg-borde); box-shadow: var(--lg-canto), var(--lg-sombra); }
-.menu a { position: relative; z-index: 1; border-radius: 999px; transition: color var(--transicion), transform 420ms var(--lg-resorte); }
-.menu a.activo { background: transparent; box-shadow: none; }
-.menu:not(.con-lente) a.activo { background: rgba(255, 255, 255, .7); box-shadow: var(--lg-canto); }
-.menu a:active { transform: scale(.92); transition-duration: 90ms; }
-.menu-lente { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 999px; pointer-events: none; opacity: 0;
-  background: rgba(255, 255, 255, .62); border: 1px solid rgba(255, 255, 255, .9);
-  box-shadow: var(--lg-canto), 0 4px 14px rgba(23, 33, 80, .16);
-  -webkit-backdrop-filter: blur(2px) saturate(220%) brightness(1.08); backdrop-filter: blur(2px) saturate(220%) brightness(1.08);
-  transition: transform 520ms var(--lg-resorte), width 520ms var(--lg-resorte), opacity 200ms ease; }
-.lg-refracta .menu-lente { backdrop-filter: url(#lg-lente) blur(1px) saturate(230%) brightness(1.1); }
-.menu-lente.sin-animar { transition: none; }
-.menu-lente.estirando { animation: lg-gota 520ms var(--lg-resorte); }
-@keyframes lg-gota { 0% { scale: 1 1; } 35% { scale: 1.22 .86; } 70% { scale: .96 1.04; } 100% { scale: 1 1; } }
-@media (hover: hover) and (pointer: fine) {
-  .menu a:hover { background: rgba(255, 255, 255, .3); color: var(--texto); }
-  .menu a.activo:hover { background: transparent; color: var(--acento); }
+.barra.con-contenido-debajo::before {
+  content: ""; position: absolute; inset: 100% 0 auto; height: 14px; pointer-events: none;
+  background: linear-gradient(var(--luz-extremo), transparent);
 }
 
-/* Portada: vidrio teñido de índigo (variante «tinted») sobre el fondo vivo */
-.portada { position: relative; overflow: hidden; isolation: isolate;
-  background: linear-gradient(135deg, rgba(50, 69, 147, .80), rgba(23, 33, 80, .86));
-  border: 1px solid rgba(255, 255, 255, .35);
-  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, .55), inset -1px -1px 0 rgba(255, 255, 255, .15),
-    inset 0 0 30px rgba(158, 213, 253, .18), 0 18px 40px rgba(23, 33, 80, .28); }
-.portada::before { content: none; }
-.portada::after { z-index: 0; mix-blend-mode: overlay; }
-.portada > * { position: relative; z-index: 1; }
-.portada .boton { background: rgba(255, 255, 255, .78); color: var(--noche); border: 1px solid rgba(255, 255, 255, .95);
-  box-shadow: var(--lg-canto), 0 6px 16px rgba(0, 0, 0, .18); }
+.menu { position: fixed; z-index: 19; border-radius: 999px; padding: .3rem; gap: .15rem; }
+.menu a { position: relative; z-index: 1; flex: 1 1 0; justify-content: center; min-width: 44px; min-height: 44px;
+  border-radius: 999px; color: var(--noche); font-weight: 600; letter-spacing: .01em; }
+.menu a span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.menu a.activo, .menu a.activo:hover { color: var(--acento); background: var(--lente-tinte); }
+.menu.con-lente a.activo { background: transparent; }
+.menu-lente { position: absolute; inset: 0 auto auto 0; pointer-events: none; border-radius: 999px;
+  width: var(--lente-ancho); height: var(--lente-alto);
+  background: var(--lente-tinte); border: .5px solid var(--lente-borde); box-shadow: var(--lente-sombra); }
+@media (hover: hover) and (pointer: fine) {
+  .menu a:hover { background: var(--luz-superior); color: var(--noche); }
+}
 
-/* Cifras del inicio: widgets de vidrio claro (como los de iOS) */
-.rejilla-cifras .tarjeta { position: relative; overflow: hidden; isolation: isolate;
-  background: rgba(255, 255, 255, .42); border: 1px solid var(--lg-borde); box-shadow: var(--lg-canto), var(--lg-sombra); }
-.rejilla-cifras .tarjeta > * { position: relative; z-index: 1; }
-.rejilla-cifras .suave { color: #3f4558; }
+.portada { position: relative; overflow: hidden;
+  background: linear-gradient(135deg, var(--portada-indigo), var(--portada-noche));
+  border: 1px solid var(--vidrio-borde); box-shadow: var(--lg-canto), var(--lg-sombra); }
+.portada .boton { background: var(--vidrio-espeso); color: var(--noche); border-color: var(--lente-borde); }
+.rejilla-cifras .tarjeta { position: relative; overflow: hidden; }
+.rejilla-cifras .suave { color: var(--noche); letter-spacing: .01em; }
 
-/* Botones: canto de luz y rebote líquido al tocarlos */
-.boton, button.boton { position: relative;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 55%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -2px 6px rgba(0, 0, 0, .12), 0 4px 12px rgba(50, 69, 147, .28);
-  transition: background-color var(--transicion), transform 420ms var(--lg-resorte), box-shadow var(--transicion); }
-.boton:active { transform: scale(.94); transition-duration: 90ms; }
-.boton-sec, button.boton-sec { background-color: rgba(255, 255, 255, .72); background-image: none;
-  border-color: rgba(255, 255, 255, .95); box-shadow: var(--lg-canto), 0 2px 8px rgba(23, 33, 80, .08); }
-.boton-texto { box-shadow: none; background-image: none; }
+.boton, button.boton { position: relative; box-shadow: var(--lg-canto), var(--lg-sombra); }
+.boton-sec, button.boton-sec { background-color: var(--vidrio-espeso); border-color: var(--lente-borde); }
+.boton-texto { box-shadow: none; }
 
-/* Enlaces dentro de listas y tablas: título de fila, no botón grande */
+.boton, button.boton, .boton-texto, .menu a, #lia-raiz .lia-flotante {
+  transition: background-color var(--transicion), color var(--transicion), transform 100ms ease-out;
+}
+.boton:active, .boton-texto:active, .menu a:active, #lia-raiz .lia-flotante:active { transform: scale(.97); }
+
+/* Enlaces de fila, filtros de pedidos y desplegables. */
 .tabla td > a.boton:first-child, .lista li > a.boton:first-child {
   display: inline-flex; min-height: 44px; padding: .2rem 0; background: none; border: 0; box-shadow: none;
   color: var(--acento); font-weight: 600; border-radius: 6px; text-align: left; justify-content: flex-start; }
 @media (hover: hover) and (pointer: fine) {
   .tabla td > a.boton:first-child:hover, .lista li > a.boton:first-child:hover { background: none; text-decoration: underline; }
 }
-
-/* Filtros de estado (pedidos): fila de píldoras compactas */
 nav.tarjeta .encabezado { justify-content: flex-start; gap: .5rem; align-items: center; margin-bottom: 0; }
 nav.tarjeta .encabezado .boton { padding: .45rem .9rem; font-size: .9rem; }
-
-/* Desplegables marcados como botón: recuperan su flecha */
 summary.boton { list-style: none; justify-content: space-between; width: 100%; }
 summary.boton::-webkit-details-marker { display: none; }
 summary.boton::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
   transform: rotate(45deg); margin: -4px 4px 0 .75rem; transition: transform var(--transicion); flex: none; }
 details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4px; }
 
-/* Lía: gota de vidrio teñida y panel de vidrio claro */
-#lia-raiz .lia-flotante { position: fixed; overflow: hidden; isolation: isolate;
-  background: radial-gradient(circle at 30% 25%, rgba(158, 213, 253, .55), rgba(50, 69, 147, .82) 55%, rgba(23, 33, 80, .92));
-  border: 1px solid rgba(255, 255, 255, .55);
-  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .6), inset -1px -2px 6px rgba(0, 0, 0, .25), 0 10px 26px rgba(23, 33, 80, .35);
-  transition: transform 420ms var(--lg-resorte); }
-#lia-raiz .lia-flotante:active { transform: scale(.9); transition-duration: 90ms; }
-#lia-raiz .lia-panel { background: rgba(255, 255, 255, .80); border: 1px solid rgba(255, 255, 255, .9); border-radius: 24px;
-  box-shadow: var(--lg-canto), 0 20px 50px rgba(23, 33, 80, .22);
-  -webkit-backdrop-filter: var(--lg-blur-fuerte); backdrop-filter: var(--lg-blur-fuerte); }
-#lia-raiz .lia-cabeza, #lia-raiz .lia-form, #lia-raiz .lia-pie { background: transparent; }
-#lia-raiz .lia-mensajes, #lia-raiz .lia-acciones { background: rgba(246, 247, 252, .7); }
-
-/* Computador: el menú es una cápsula de vidrio flotante, centrada sobre la barra (como macOS Tahoe) */
-@media (min-width: 769px) {
-  .barra { justify-content: space-between; }
-  .menu { position: fixed; top: 6px; left: 50%; translate: -50% 0; z-index: 25; }
+#lia-raiz .lia-flotante { overflow: hidden;
+  background: radial-gradient(circle at 30% 25%, var(--lia-luz), var(--primario) 55%, var(--noche));
+  border: .5px solid var(--vidrio-borde); box-shadow: var(--lg-canto), var(--lg-sombra); }
+#lia-raiz .lia-panel { border-radius: 24px; opacity: 1; transform: scale(1); transform-origin: bottom right;
+  transition: opacity var(--lg-viaje) var(--lg-curva), transform var(--lg-viaje) var(--lg-curva); }
+@starting-style {
+  #lia-raiz .lia-panel:not([hidden]) { opacity: 0; transform: scale(.96); }
 }
+#lia-raiz .lia-cabeza, #lia-raiz .lia-form, #lia-raiz .lia-pie { background: transparent; }
+#lia-raiz .lia-mensajes, #lia-raiz .lia-acciones { background: var(--lia-mensajes); }
 
-/* Celular: barra de pestañas flotante de vidrio, como iOS 26 */
+@media (width > 768px) {
+  .barra { justify-content: space-between; }
+  .barra .marca, .barra .salir { max-width: calc(23% - 1.25rem); min-width: 0; }
+  .barra .quien, .barra .quien-nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barra .avatar, .barra .boton-texto { flex: none; }
+  .menu { top: 6px; left: 50%; translate: -50% 0; z-index: 25; width: min(54%, 660px); }
+  .menu a { padding-inline: .45rem; }
+}
+@media (768px < width <= 1100px) {
+  .menu { width: max-content; max-width: 54%; }
+  .menu a span { display: none; }
+  .barra .quien-nombre { display: none; }
+}
 @media (max-width: 768px) {
-  .barra { background: transparent; }
-  .menu { position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); padding: .3rem; min-height: 0;
-    border-radius: 32px; }
+  .menu { left: clamp(0px, calc((100vw - 284px) / 2), 12px); right: clamp(0px, calc((100vw - 284px) / 2), 12px);
+    bottom: calc(10px + env(safe-area-inset-bottom)); min-height: 0; border-radius: 32px; justify-content: center; }
   .menu a { border-radius: 26px; padding: .45rem .15rem; }
   .menu a.activo svg { background: transparent; padding: 0; width: 22px; height: 22px; }
+  .menu.con-contenido-debajo::before { content: ""; position: absolute; inset: auto 12px 100%; height: 14px;
+    pointer-events: none; background: linear-gradient(transparent, var(--luz-extremo)); }
   .contenido { padding-bottom: calc(var(--alto-nav) + 7rem + env(safe-area-inset-bottom)); }
   #lia-raiz .lia-flotante { bottom: calc(var(--alto-nav) + 24px + env(safe-area-inset-bottom)); }
 }
 
-/* Sin soporte de vidrio, o con «reducir transparencia»: superficies opacas y sin refracción */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .menu, .rejilla-cifras .tarjeta, .menu-lente { background: rgba(255, 255, 255, .96); }
-}
-@media (prefers-reduced-transparency: reduce) {
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
   .fondo-liquido { display: none; }
   body { background: var(--fondo); }
-  .menu, .barra, .rejilla-cifras .tarjeta, .menu-lente, #lia-raiz .lia-panel {
-    background: var(--superficie); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .portada, #lia-raiz .lia-flotante { background: var(--noche); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .menu::after, .barra::after, .portada::after, .rejilla-cifras .tarjeta::after, #lia-raiz .lia-flotante::after { display: none; }
+  .barra, .menu, .tarjeta, .rejilla-cifras .tarjeta, .portada .boton, .boton-sec, button.boton-sec, #lia-raiz .lia-panel {
+    background: var(--superficie); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .portada, #lia-raiz .lia-flotante { background: var(--noche); }
+  .menu a:hover { background: var(--superficie-2); }
+  .menu-lente, .menu:not(.con-lente) a.activo, .menu:not(.con-lente) a.activo:hover { background: var(--primario-suave); }
+  #lia-raiz .lia-mensajes, #lia-raiz .lia-acciones { background: var(--superficie-2); }
+  .barra::before, .menu::before, .barra::after, .menu::after, .portada::after,
+  .rejilla-cifras .tarjeta::after, #lia-raiz .lia-flotante::after { display: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .fondo-liquido span { animation: none; }
-  .menu-lente.estirando { animation: none; }
+@media (prefers-contrast: more), (forced-colors: active) {
+  .barra, .menu, .tarjeta, .rejilla-cifras .tarjeta, .portada, .boton, .portada .boton, .boton-sec, button.boton-sec,
+  .menu-lente, #lia-raiz .lia-panel, #lia-raiz .lia-flotante { border: 1px solid currentColor; box-shadow: none; }
+  .boton-peligro:hover { filter: none; }
+  .menu a.activo { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+  .portada :focus-visible { outline-color: var(--sobre-noche); }
 }
-
+@media (forced-colors: active) {
+  .barra, .menu, .tarjeta, .rejilla-cifras .tarjeta, .portada, .menu-lente, #lia-raiz .lia-panel,
+  #lia-raiz .lia-flotante { border-color: var(--borde-sistema); }
+  :focus-visible, .portada :focus-visible { outline-color: var(--foco-sistema); }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+  .boton:active, .boton-texto:active, .menu a:active, #lia-raiz .lia-flotante:active { transform: none; opacity: .8; }
+  #lia-raiz .lia-panel { transform: none; transition: opacity var(--lg-viaje) ease-out; transition-duration: var(--lg-viaje) !important; }
+  @starting-style {
+    #lia-raiz .lia-panel:not([hidden]) { transform: none; }
+  }
 }
