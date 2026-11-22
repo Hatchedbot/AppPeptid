@@ -271,6 +271,13 @@
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', prepararVidrio); }
   else { prepararVidrio(); }
 
+  // App instalable: registra el service worker (solo guarda archivos estáticos, nunca datos).
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* sin instalación, la app sigue igual */ });
+    });
+  }
+
   // Botones con data-confirmar="¿Seguro?" piden confirmación antes de enviar.
   document.addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-confirmar]');

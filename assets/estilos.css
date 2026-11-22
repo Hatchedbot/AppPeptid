@@ -439,3 +439,26 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
 .icono { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; color: var(--acento); }
 .titulo-icono { display: flex; align-items: center; gap: .5rem; }
 .titulo-icono .icono { width: 1.25em; height: 1.25em; }
+
+/* App instalada (pantalla completa): respeta la muesca y la barra de estado del celular */
+@media (max-width: 768px) {
+  .barra { top: calc(12px + env(safe-area-inset-top)); margin-top: calc(12px + env(safe-area-inset-top)); }
+}
+@media (display-mode: standalone) {
+  body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  .menu, .barra { -webkit-user-select: none; user-select: none; }
+}
+
+/* Cifras con la letra de los títulos (Fraunces) */
+.cifra { font-family: var(--fuente-titulo); font-weight: 600; letter-spacing: -.02em; }
+
+/* Entrada suave del contenido al abrir cada pantalla */
+@keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.contenido > * { animation: entrar 320ms var(--lg-curva) both; }
+.contenido > *:nth-child(2) { animation-delay: 40ms; }
+.contenido > *:nth-child(3) { animation-delay: 80ms; }
+.contenido > *:nth-child(4) { animation-delay: 120ms; }
+.contenido > *:nth-child(n+5) { animation-delay: 160ms; }
+@media (prefers-reduced-motion: reduce) {
+  .contenido > * { animation: none; }
+}
