@@ -159,7 +159,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="fila">
                         <div class="campo">
                             <label for="cantidad-<?= e($i) ?>" data-campo="cantidad">Cantidad</label>
-                            <input type="text" id="cantidad-<?= e($i) ?>" name="items[<?= e($i) ?>][cantidad]"
+                            <input type="number" min="1" step="1" id="cantidad-<?= e($i) ?>" name="items[<?= e($i) ?>][cantidad]"
                                    data-campo="cantidad" inputmode="numeric" value="<?= e($item['cantidad'] ?? 1) ?>" required>
                         </div>
                         <div class="campo">
@@ -169,7 +169,7 @@ require __DIR__ . '/includes/header.php';
                             <span class="ayuda">Déjalo vacío para usar el precio del catálogo.</span>
                         </div>
                     </div>
-                    <div><button type="button" class="boton boton-peligro" data-quitar>Quitar producto</button></div>
+                    <div><button type="button" class="boton boton-quitar" data-quitar>Quitar producto</button></div>
                 </fieldset>
                 <?php if ($item === null): ?></template><?php endif; ?>
             <?php endforeach; ?>
@@ -330,7 +330,7 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </section>
     <section class="tarjeta">
-        <h2>Pagos</h2>
+        <h2 id="pagos">Pagos</h2>
         <p><span class="etiqueta <?= $estado_pago === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$estado_pago])) ?></span>
             · Total registrado <?= e(dinero(array_sum(array_column($pagos, 'valor')))) ?></p>
         <?php if ($pagos): ?>
