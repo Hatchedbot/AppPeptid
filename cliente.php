@@ -214,8 +214,14 @@ require __DIR__ . '/includes/header.php';
         <p class="suave">Cliente desde <?= e(fecha_corta($cliente['creado'])) ?></p>
     </div>
     <div class="fila">
-        <a class="boton boton-sec" href="<?= e($whatsapp) ?>" target="_blank" rel="noopener">Escribir por WhatsApp</a>
-        <a class="boton" href="cliente.php?id=<?= (int) $id ?>&amp;editar=1">Editar ficha</a>
+        <?php if (puede('pedidos')): ?>
+            <a class="boton" href="pedido.php?nuevo=1&amp;cliente=<?= (int) $id ?>"><?= icono('pedidos') ?> Crear pedido</a>
+        <?php endif; ?>
+        <?php if (puede('casos')): ?>
+            <a class="boton boton-sec" href="caso.php?nuevo=1&amp;cliente=<?= (int) $id ?>"><?= icono('plan') ?> Crear proceso</a>
+        <?php endif; ?>
+        <a class="boton boton-sec" href="<?= e($whatsapp) ?>" target="_blank" rel="noopener"><?= icono('mensajes') ?> Escribir por WhatsApp</a>
+        <a class="boton boton-sec" href="cliente.php?id=<?= (int) $id ?>&amp;editar=1"><?= icono('usuario') ?> Editar ficha</a>
     </div>
 </div>
 

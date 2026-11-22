@@ -60,9 +60,21 @@ require __DIR__ . '/includes/header.php';
             <tbody>
             <?php foreach ($clientes as $c): ?>
                 <tr>
-                    <td><a class="boton boton-texto" href="cliente.php?id=<?= (int) $c['id'] ?>"><strong><?= e($c['nombre']) ?></strong></a></td>
-                    <td>Teléfono <?= e($c['telefono']) ?></td>
-                    <td>Ciudad <?= e($c['ciudad'] ?? '') ?: '<span class="suave">sin registrar</span>' ?></td>
+                    <td>
+                        <a class="boton boton-texto" href="cliente.php?id=<?= (int) $c['id'] ?>"><strong><?= e($c['nombre']) ?></strong></a>
+                        <div class="acciones-fila">
+                            <?php if (puede('pedidos')): ?>
+                                <a class="boton boton-sec" href="pedido.php?nuevo=1&amp;cliente=<?= (int) $c['id'] ?>"
+                                   aria-label="Crear pedido para <?= e($c['nombre']) ?>"><?= icono('pedidos') ?> Crear pedido</a>
+                            <?php endif; ?>
+                            <?php if (puede('casos')): ?>
+                                <a class="boton boton-sec" href="caso.php?nuevo=1&amp;cliente=<?= (int) $c['id'] ?>"
+                                   aria-label="Crear proceso para <?= e($c['nombre']) ?>"><?= icono('plan') ?> Crear proceso</a>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td><span class="solo-movil">Teléfono</span> <?= e($c['telefono']) ?></td>
+                    <td><span class="solo-movil">Ciudad</span> <?= e($c['ciudad'] ?? '') ?: '<span class="suave">sin registrar</span>' ?></td>
                     <td>
                         <?php $n = (int) $c['casos_activos']; ?>
                         <?php if ($n > 0): ?>
