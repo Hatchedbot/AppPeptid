@@ -266,7 +266,7 @@ h1 { letter-spacing: -.02em; }
 }
 
 .barra, .menu, .portada, .rejilla-cifras .tarjeta, #lia-raiz .lia-flotante { isolation: isolate; }
-.barra { border-bottom: 0; backdrop-filter: none; }
+.barra { border-bottom: 0; -webkit-backdrop-filter: var(--bisel-respaldo); backdrop-filter: var(--bisel-respaldo); }
 .menu::after, .barra::after, .portada::after, .rejilla-cifras .tarjeta::after, #lia-raiz .lia-flotante::after {
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background: radial-gradient(160px circle at var(--lg-x, 50%) var(--lg-y, 0%), var(--luz-vidrio), transparent 65%),

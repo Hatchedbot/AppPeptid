@@ -249,7 +249,7 @@
     var chromium = navigator.userAgentData
       ? navigator.userAgentData.brands.some(function (marca) { return marca.brand === 'Chromium'; })
       : /\bChrome\//.test(navigator.userAgent) && !/\b(?:iPhone|iPad|iPod)\b/.test(navigator.userAgent);
-    var equipoLento = navigator.hardwareConcurrency <= 4 || navigator.deviceMemory <= 4;
+    var equipoLento = (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) || (navigator.deviceMemory && navigator.deviceMemory < 4);
     if (chromium && !equipoLento && CSS.supports('backdrop-filter', 'url(#bisel-menu) blur(3px)')) {
       prepararBisel(menu, 'menu', observarTamano);
       var lia = document.querySelector('#lia-raiz .lia-flotante');
