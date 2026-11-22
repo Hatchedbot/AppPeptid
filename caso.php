@@ -105,7 +105,13 @@ if (!$nuevo) {
     $planes = planes_del_caso($caso_id);
     $progreso = progreso_peso($caso_id);
     $seguimientos = seguimientos_del_caso($caso_id);
-    $productos = db()->query('SELECT id, nombre, presentacion FROM productos WHERE activo = 1 ORDER BY nombre')->fetchAll();
+    $catalogo = db()->prepare('SELECT id, nombre, presentacion, categoria FROM productos WHERE activo = ? ORDER BY categoria, nombre, presentacion, id');
+    $catalogo->execute([1]);
+    $productos_por_categoria = [];
+    foreach ($catalogo->fetchAll() as $producto) {
+        $categoria = trim($producto['categoria']) ?: 'Sin categoría';
+        $productos_por_categoria[$categoria][] = $producto;
+    }
 }
 $activo = 'clientes';
 require __DIR__ . '/includes/header.php';
@@ -127,7 +133,7 @@ require __DIR__ . '/includes/header.php';
 
 <?php if ($nuevo): ?>
 <form method="post" id="formulario-caso" class="tarjeta formulario" autocomplete="off">
-    <h2>Datos del proceso</h2>
+    <h2 class="titulo-icono"><?= icono('plan') ?> Datos del proceso</h2>
     <?= campo_csrf() ?>
     <div class="campo">
         <label for="titulo">Título</label>
@@ -159,7 +165,7 @@ require __DIR__ . '/includes/header.php';
 </form>
 <?php else: ?>
 <section class="tarjeta">
-    <h2>Resumen del proceso</h2>
+    <h2 class="titulo-icono"><?= icono('peso') ?> Resumen del proceso</h2>
     <?php $clases_estado = ['activo' => 'etiqueta-ok', 'pausado' => 'etiqueta-alerta']; ?>
     <p><span class="etiqueta <?= e($clases_estado[$caso['estado']] ?? '') ?>"><?= e($estados[$caso['estado']] ?? $caso['estado']) ?></span></p>
     <p>Fecha de inicio: <?= e(fecha_corta($caso['fecha_inicio'])) ?></p>
@@ -195,7 +201,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Plan actual e historial</h2>
+    <h2 class="titulo-icono"><?= icono('plan') ?> Plan actual e historial</h2>
     <?php if (!$planes): ?>
         <p class="suave">Crea el primer plan para este proceso.</p>
         <a class="boton boton-sec" href="#nueva-version">Ir al formulario del plan</a>
@@ -224,7 +230,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2 id="nueva-version"><?= $planes ? 'Nueva versión del plan' : 'Primer plan' ?></h2>
+    <h2 id="nueva-version" class="titulo-icono"><?= icono('plan') ?> <?= e($planes ? 'Nueva versión del plan' : 'Primer plan') ?></h2>
     <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="nueva_version">
@@ -247,36 +253,40 @@ require __DIR__ . '/includes/header.php';
             <legend>Ítem del plan</legend>
             <div class="fila">
                 <div class="campo">
-                    <label>Producto del catálogo</label>
-                    <select data-campo="producto_id">
+                    <label for="plantilla-producto_id">Producto del catálogo</label>
+                    <select id="plantilla-producto_id" data-campo="producto_id">
                         <option value="">Selecciona un producto</option>
-                        <?php foreach ($productos as $producto): ?>
-                            <option value="<?= e($producto['id']) ?>"><?= e($producto['nombre'] . ' · ' . $producto['presentacion']) ?></option>
+                        <?php foreach ($productos_por_categoria as $categoria => $productos): ?>
+                            <optgroup label="<?= e($categoria) ?>">
+                                <?php foreach ($productos as $producto): ?>
+                                    <option value="<?= e($producto['id']) ?>"><?= e($producto['nombre'] . ' · ' . $producto['presentacion']) ?></option>
+                                <?php endforeach; ?>
+                            </optgroup>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="campo">
-                    <label>Producto en texto libre</label>
-                    <input type="text" data-campo="producto_nombre">
+                    <label for="plantilla-producto_nombre">Producto en texto libre</label>
+                    <input type="text" id="plantilla-producto_nombre" data-campo="producto_nombre">
                 </div>
             </div>
             <div class="fila">
                 <div class="campo">
-                    <label>Dosis</label>
-                    <input type="text" data-campo="dosis">
+                    <label for="plantilla-dosis">Dosis</label>
+                    <input type="text" id="plantilla-dosis" data-campo="dosis">
                 </div>
                 <div class="campo">
-                    <label>Frecuencia</label>
-                    <input type="text" data-campo="frecuencia">
+                    <label for="plantilla-frecuencia">Frecuencia</label>
+                    <input type="text" id="plantilla-frecuencia" data-campo="frecuencia">
                 </div>
                 <div class="campo">
-                    <label>Duración</label>
-                    <input type="text" data-campo="duracion">
+                    <label for="plantilla-duracion">Duración</label>
+                    <input type="text" id="plantilla-duracion" data-campo="duracion">
                 </div>
             </div>
             <div class="campo">
-                <label>Notas internas</label>
-                <textarea data-campo="notas"></textarea>
+                <label for="plantilla-notas">Notas internas</label>
+                <textarea id="plantilla-notas" data-campo="notas"></textarea>
             </div>
             <button type="button" class="boton boton-peligro">Quitar ítem</button>
         </fieldset>
@@ -307,7 +317,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Seguimientos</h2>
+    <h2 class="titulo-icono"><?= icono('calendario') ?> Seguimientos</h2>
     <?php if (!$seguimientos): ?>
         <p class="suave">Registra el primer seguimiento para ver el avance del cliente.</p>
         <a class="boton boton-sec" href="#nuevo-seguimiento">Ir al formulario de seguimiento</a>
@@ -326,7 +336,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2 id="nuevo-seguimiento">Nuevo seguimiento</h2>
+    <h2 id="nuevo-seguimiento" class="titulo-icono"><?= icono('calendario') ?> Nuevo seguimiento</h2>
     <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="seguimiento">
