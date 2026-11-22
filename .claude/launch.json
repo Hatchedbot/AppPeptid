@@ -4,13 +4,13 @@
     {
       "name": "app",
       "runtimeExecutable": "C:\\xampp\\php\\php.exe",
-      "runtimeArgs": ["-S", "localhost:8000"],
+      "runtimeArgs": ["-S", "localhost:8000", "router.php"],
       "port": 8000
     },
     {
       "name": "demo",
       "runtimeExecutable": "C:\\xampp\\php\\php.exe",
-      "runtimeArgs": ["-S", "localhost:8080"],
+      "runtimeArgs": ["-S", "localhost:8080", "router.php"],
       "env": { "APP_DB_DSN": "sqlite:D:/UNIVERSIDAD/AppPeptid/datos/demo.sqlite" },
       "port": 8080
     }

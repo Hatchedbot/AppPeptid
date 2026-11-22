@@ -11,7 +11,7 @@ Hecha en PHP + MySQL (SQLite en local). Se publica en Hostinger.
 1. Necesitas XAMPP (trae PHP).
 2. En la carpeta del proyecto:
    ```
-   C:\xampp\php\php.exe -S localhost:8000
+   C:\xampp\php\php.exe -S localhost:8000 router.php
    ```
 3. Abre http://localhost:8000 y crea el administrador.
 

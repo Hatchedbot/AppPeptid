@@ -9,7 +9,7 @@ Joan no es programador: explícale en español sencillo, paso a paso.
 ## Cómo se ejecuta y se prueba
 
 - PHP de XAMPP: `C:\xampp\php\php.exe` (en Git Bash: `/c/xampp/php/php.exe`). No hay PHP en el PATH.
-- Local: `C:\xampp\php\php.exe -S localhost:8000` en la raíz → http://localhost:8000 (la primera vez pide crear
+- Local: `C:\xampp\php\php.exe -S localhost:8000 router.php` en la raíz (el router bloquea datos/, includes/, sql/ y .git) → http://localhost:8000 (la primera vez pide crear
   el administrador). Usa SQLite en `datos/app.sqlite` (no se sube a git).
 - Pruebas: `C:\xampp\php\php.exe tests/run.php` (sintaxis de todos los .php + `tests/test_*.php`, SQLite en
   memoria). Una sola: `tests/run.php clientes`.

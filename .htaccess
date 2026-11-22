@@ -1,0 +1,17 @@
+# Hostinger (Apache): mismas protecciones que router.php.
+Options -Indexes
+
+# Carpetas internas y archivos ocultos: nunca se sirven por la web.
+RedirectMatch 404 /(datos|includes|sql|tests|herramientas)(/|$)
+RedirectMatch 404 /\.
+
+# Archivos de datos, notas y configuración.
+<FilesMatch "\.(sqlite|sqlite3|db|md|log|txt|sql|ini|sh|ps1|json)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^(config(\.local)?(\.example)?\.php|router\.php)$">
+    Require all denied
+</FilesMatch>
+
+# La app instalable necesita su manifiesto con el tipo correcto.
+AddType application/manifest+json .webmanifest
