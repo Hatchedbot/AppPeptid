@@ -26,10 +26,12 @@ if (!$producto) {
     $titulo = 'Producto no encontrado';
     require __DIR__ . '/includes/header.php';
     ?>
-    <div class="tarjeta">
-        <h1>No encontramos ese producto</h1>
-        <p class="suave">Puede que se haya borrado o que el enlace esté mal.</p>
-        <p><a class="boton" href="inventario.php">Volver al inventario</a></p>
+    <div class="encabezado">
+        <div>
+            <h1>No encontramos ese producto</h1>
+            <p class="suave">Busca el producto por nombre en el inventario.</p>
+        </div>
+        <a class="boton" href="inventario.php">Volver al inventario</a>
     </div>
     <?php
     require __DIR__ . '/includes/footer.php';
@@ -88,6 +90,7 @@ require __DIR__ . '/includes/header.php';
     <h2>Lotes</h2>
     <?php if (!$lotes): ?>
         <p class="suave">Este producto todavía no tiene lotes. Registra una entrada desde el inventario.</p>
+        <a class="boton" href="inventario.php#entrada">Registrar entrada</a>
     <?php else: ?>
         <table class="tabla tabla-movil">
             <thead>
@@ -115,8 +118,8 @@ require __DIR__ . '/includes/header.php';
                 ?>
                 <tr>
                     <td><strong><?= e($l['codigo']) ?></strong></td>
-                    <td><?= $venc !== null ? e(fecha_corta((string) $venc)) : '<span class="suave">Sin fecha</span>' ?></td>
-                    <td><?= (int) $l['stock'] ?></td>
+                    <td><span class="suave">Vencimiento</span> <?= $venc !== null ? e(fecha_corta((string) $venc)) : 'Sin fecha' ?></td>
+                    <td><?= (int) $l['stock'] ?> unidades</td>
                     <td><span class="etiqueta <?= $clase ?>"><?= $texto ?></span></td>
                 </tr>
             <?php endforeach; ?>
@@ -128,7 +131,7 @@ require __DIR__ . '/includes/header.php';
 <section class="tarjeta">
     <h2>Ajuste de inventario</h2>
     <p class="suave">Suma o resta unidades de un lote. El motivo es obligatorio.</p>
-    <form method="post" class="formulario">
+    <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="ajuste">
         <div class="campo">
@@ -146,8 +149,9 @@ require __DIR__ . '/includes/header.php';
         </div>
         <div class="fila">
             <div class="campo">
-                <label for="cantidad">Cantidad (+ suma, − resta) *</label>
-                <input type="number" id="cantidad" name="cantidad" step="1" inputmode="numeric" required>
+                <label for="cantidad">Cantidad *</label>
+                <input type="number" id="cantidad" name="cantidad" step="1" required aria-describedby="ayuda-ajuste">
+                <span class="ayuda" id="ayuda-ajuste">Usa el signo menos para restar unidades.</span>
             </div>
             <div class="campo">
                 <label for="motivo">Motivo *</label>
@@ -161,7 +165,7 @@ require __DIR__ . '/includes/header.php';
 
 <section class="tarjeta">
     <h2>Precio y stock mínimo</h2>
-    <form method="post" class="formulario">
+    <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="guardar">
         <div class="fila">
@@ -183,7 +187,8 @@ require __DIR__ . '/includes/header.php';
 <section class="tarjeta">
     <h2>Movimientos recientes</h2>
     <?php if (!$movimientos): ?>
-        <p class="suave">Todavía no hay movimientos de este producto.</p>
+        <p class="suave">Todavía no hay movimientos. Registra una entrada para empezar.</p>
+        <a class="boton boton-sec" href="inventario.php#entrada">Registrar entrada</a>
     <?php else: ?>
         <table class="tabla tabla-movil">
             <thead>
@@ -192,21 +197,21 @@ require __DIR__ . '/includes/header.php';
             <tbody>
             <?php foreach ($movimientos as $m): ?>
                 <tr>
-                    <td><?= e(fecha_corta((string) $m['fecha'])) ?></td>
+                    <td><span class="suave">Fecha</span> <?= e(fecha_corta((string) $m['fecha'])) ?></td>
                     <td><span class="etiqueta"><?= e(TIPOS_MOVIMIENTO[$m['tipo']] ?? $m['tipo']) ?></span></td>
-                    <td><?= (int) $m['cantidad'] > 0 ? '+' : '' ?><?= (int) $m['cantidad'] ?></td>
-                    <td><?= e($m['lote_codigo']) ?></td>
+                    <td><?= (int) $m['cantidad'] > 0 ? '+' : '' ?><?= (int) $m['cantidad'] ?> unidades</td>
+                    <td><span class="suave">Lote</span> <?= e($m['lote_codigo']) ?></td>
                     <td>
                         <?php if ($m['pedido_id'] && is_file(RAIZ . '/pedido.php')): ?>
-                            <a href="pedido.php?id=<?= (int) $m['pedido_id'] ?>">#<?= (int) $m['pedido_id'] ?></a>
+                            <a class="boton boton-sec" href="pedido.php?id=<?= (int) $m['pedido_id'] ?>">Pedido #<?= (int) $m['pedido_id'] ?></a>
                         <?php elseif ($m['pedido_id']): ?>
-                            #<?= (int) $m['pedido_id'] ?>
+                            Pedido #<?= (int) $m['pedido_id'] ?>
                         <?php else: ?>
-                            <span class="suave">—</span>
+                            <span class="suave">Sin pedido</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= e($m['usuario_nombre'] ?? '') ?: '<span class="suave">—</span>' ?></td>
-                    <td><?= e($m['nota'] ?? '') ?: '<span class="suave">—</span>' ?></td>
+                    <td><span class="suave">Usuario</span> <?= e($m['usuario_nombre'] ?? '') ?: 'Sin registro' ?></td>
+                    <td><span class="suave">Nota</span> <?= e($m['nota'] ?? '') ?: 'Sin nota' ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

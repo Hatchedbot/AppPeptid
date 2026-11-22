@@ -13,21 +13,26 @@ $filtros = [
 ];
 $pedidos = pedidos_listar($filtros);
 $conteos = array_count_values(array_column($pedidos, 'estado'));
+$url_nuevo = 'pedido.php?' . http_build_query(['nuevo' => 1, 'cliente' => $filtros['cliente_id']]);
 $titulo = 'Pedidos';
 $activo = 'pedidos';
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="encabezado">
-    <h1>Pedidos</h1>
-    <a class="boton" href="pedido.php?<?= e(http_build_query(['nuevo' => 1, 'cliente' => $filtros['cliente_id']])) ?>">Nuevo pedido</a>
+    <div>
+        <h1>Pedidos</h1>
+        <p class="suave">Consulta tus pedidos, pagos y envíos.</p>
+    </div>
+    <a class="boton" href="<?= e($url_nuevo) ?>">Nuevo pedido</a>
 </div>
 <form method="get" action="pedidos.php" class="tarjeta formulario">
+    <h2>Filtrar pedidos</h2>
     <input type="hidden" name="estado" value="<?= e($estado) ?>">
     <input type="hidden" name="cliente_id" value="<?= e($filtros['cliente_id']) ?>">
     <div class="fila">
         <div class="campo">
-            <label for="q">Buscar por cliente, número de pedido o guía</label>
-            <input id="q" name="q" type="search" value="<?= e($filtros['q']) ?>">
+            <label for="q">Cliente, número de pedido o guía</label>
+            <input id="q" name="q" type="search" autocomplete="off" value="<?= e($filtros['q']) ?>">
         </div>
         <div class="campo">
             <label for="estado_pago">Estado del pago</label>
@@ -39,35 +44,49 @@ require __DIR__ . '/includes/header.php';
             </select>
         </div>
     </div>
-    <button class="boton">Buscar</button>
-    <?php if (array_filter($filtros)): ?><a href="pedidos.php">Quitar filtros</a><?php endif; ?>
+    <div class="fila">
+        <button class="boton">Buscar</button>
+        <?php if (array_filter($filtros) || $estado !== ''): ?>
+            <a class="boton boton-sec" href="pedidos.php">Quitar filtros</a>
+        <?php endif; ?>
+    </div>
 </form>
-<nav class="tarjeta fila" aria-label="Estados de los pedidos">
-    <?php foreach (['' => 'Todos'] + PEDIDO_ESTADOS as $clave => $nombre): ?>
-        <a class="boton <?= $estado === $clave ? '' : 'boton-sec' ?>"
-           <?= $estado === $clave ? 'aria-current="page"' : '' ?>
-           href="pedidos.php?<?= e(http_build_query(['estado' => $clave] + $filtros)) ?>">
-            <?= e($nombre) ?> (<?= e($clave === '' ? count($pedidos) : ($conteos[$clave] ?? 0)) ?>)
-        </a>
-    <?php endforeach; ?>
+<nav class="tarjeta" aria-labelledby="estados-pedidos">
+    <h2 id="estados-pedidos">Estado del pedido</h2>
+    <div class="encabezado">
+        <?php foreach (['' => 'Todos'] + PEDIDO_ESTADOS as $clave => $nombre): ?>
+            <a class="boton <?= $estado === $clave ? '' : 'boton-sec' ?>"
+               <?= $estado === $clave ? 'aria-current="page"' : '' ?>
+               href="pedidos.php?<?= e(http_build_query(['estado' => $clave] + $filtros)) ?>">
+                <?= e($nombre) ?> (<?= e($clave === '' ? count($pedidos) : ($conteos[$clave] ?? 0)) ?>)
+            </a>
+        <?php endforeach; ?>
+    </div>
 </nav>
-<section class="tarjeta" aria-label="Resultados">
+<section class="tarjeta">
+    <h2>Resultados</h2>
     <?php if (isset(PEDIDO_ESTADOS[$estado])): ?>
         <?php $pedidos = array_filter($pedidos, fn($pedido) => $pedido['estado'] === $estado); ?>
     <?php endif; ?>
     <?php if (!$pedidos): ?>
-        <p class="suave">No hay pedidos que coincidan.</p>
+        <?php if (array_filter($filtros) || $estado !== ''): ?>
+            <p class="suave">No hay pedidos con estos filtros. Quita los filtros para ver todos.</p>
+            <a class="boton boton-sec" href="pedidos.php">Quitar filtros</a>
+        <?php else: ?>
+            <p class="suave">Todavía no hay pedidos. Crea el primero para empezar el seguimiento.</p>
+            <a class="boton" href="<?= e($url_nuevo) ?>">Crear primer pedido</a>
+        <?php endif; ?>
     <?php else: ?>
         <table class="tabla tabla-movil">
             <thead><tr><th>Pedido y cliente</th><th>Total</th><th>Estado</th><th>Pago</th><th>Fecha</th></tr></thead>
             <tbody>
             <?php foreach ($pedidos as $pedido): ?>
                 <tr>
-                    <td><a href="pedido.php?id=<?= e($pedido['id']) ?>">#<?= e($pedido['id']) ?> · <?= e($pedido['cliente']) ?></a></td>
-                    <td><?= e(dinero($pedido['total'])) ?></td>
-                    <td><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?></td>
-                    <td>Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$pedido['estado_pago']])) ?></td>
-                    <td><?= e(fecha_corta($pedido['creado'])) ?></td>
+                    <td><a class="boton boton-sec" href="pedido.php?id=<?= e($pedido['id']) ?>">Pedido #<?= e($pedido['id']) ?> · <?= e($pedido['cliente']) ?></a></td>
+                    <td><span class="suave">Total</span> <?= e(dinero($pedido['total'])) ?></td>
+                    <td><span class="etiqueta <?= $pedido['estado'] === 'entregado' ? 'etiqueta-ok' : '' ?>"><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?></span></td>
+                    <td><span class="etiqueta <?= $pedido['estado_pago'] === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$pedido['estado_pago']])) ?></span></td>
+                    <td><span class="suave">Fecha</span> <?= e(fecha_corta($pedido['creado'])) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
