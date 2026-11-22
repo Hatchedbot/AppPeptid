@@ -3,9 +3,9 @@
  * Ficha de un producto: lotes con vencimiento y unidades, movimientos recientes,
  * ajuste de inventario y edición del precio y el stock mínimo.
  *
- * Las funciones del módulo están en inventario.php, que se incluye aquí.
+ * Las funciones del módulo están en includes/inventario.php.
  */
-require_once __DIR__ . '/inventario.php';
+require_once __DIR__ . '/includes/inventario.php';
 
 /* El cuerpo de la página solo corre cuando se pide este archivo. */
 if (!inventario_pagina_es_actual(__FILE__)) {
@@ -15,7 +15,6 @@ if (!inventario_pagina_es_actual(__FILE__)) {
 if (!defined('RAIZ')) {
     require __DIR__ . '/includes/app.php';
 }
-require_once __DIR__ . '/includes/inventario.php';
 requerir_permiso('inventario');
 
 $id = (int) ($_GET['id'] ?? 0);
@@ -87,7 +86,7 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <section class="tarjeta">
-    <h2>Lotes</h2>
+    <h2 class="titulo-icono"><?= icono('inventario') ?> Lotes</h2>
     <?php if (!$lotes): ?>
         <p class="suave">Este producto todavía no tiene lotes. Registra una entrada desde el inventario.</p>
         <a class="boton" href="inventario.php#entrada">Registrar entrada</a>
@@ -129,7 +128,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Ajuste de inventario</h2>
+    <h2 class="titulo-icono"><?= icono('peso') ?> Ajuste de inventario</h2>
     <p class="suave">Suma o resta unidades de un lote. El motivo es obligatorio.</p>
     <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
@@ -164,7 +163,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Precio y stock mínimo</h2>
+    <h2 class="titulo-icono"><?= icono('llave') ?> Precio y stock mínimo</h2>
     <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="guardar">
@@ -185,7 +184,7 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Movimientos recientes</h2>
+    <h2 class="titulo-icono"><?= icono('calendario') ?> Movimientos recientes</h2>
     <?php if (!$movimientos): ?>
         <p class="suave">Todavía no hay movimientos. Registra una entrada para empezar.</p>
         <a class="boton boton-sec" href="inventario.php#entrada">Registrar entrada</a>

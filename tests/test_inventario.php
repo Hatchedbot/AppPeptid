@@ -1,7 +1,6 @@
 <?php
 /** Pruebas del inventario: funciones nuevas y carga de las pantallas. */
 require_once RAIZ . '/includes/inventario.php';
-require_once RAIZ . '/inventario.php';   // carga las funciones; el cuerpo se salta en CLI
 
 if (!function_exists('producto_inventario_prueba')) {
     /** Crea un producto de prueba y devuelve su id. */

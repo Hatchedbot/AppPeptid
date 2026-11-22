@@ -234,3 +234,130 @@ function inventario_alertas(): array
     }
     return ['stock_bajo' => $stock_bajo, 'por_vencer' => $por_vencer, 'vencidos' => $vencidos];
 }
+
+/** Verdadero solo cuando $archivo es el script que se está ejecutando. */
+function inventario_pagina_es_actual(string $archivo): bool
+{
+    $script = $_SERVER['SCRIPT_FILENAME'] ?? '';
+    return $script !== '' && realpath($script) === realpath($archivo);
+}
+
+/** Texto comparable (minúsculas y sin tildes) para buscar. */
+function inventario_texto_comparable(string $texto): string
+{
+    $texto = (string) preg_replace('/\s+/u', ' ', trim($texto));
+    $texto = mb_strtolower($texto, 'UTF-8');
+    return strtr($texto, [
+        'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+    ]);
+}
+
+/**
+ * Productos activos con su stock vigente, stock mínimo y estado.
+ * Con $q filtra por nombre, presentación o categoría (sin tildes).
+ * Devuelve cada fila con 'stock' y 'estado' (ok | bajo | agotado).
+ */
+function inventario_productos(string $q = ''): array
+{
+    $filas = db()->query(
+        'SELECT id, nombre, presentacion, categoria, precio, activo, stock_minimo
+         FROM productos WHERE activo = 1
+         ORDER BY categoria, nombre, id'
+    )->fetchAll();
+
+    $q = inventario_texto_comparable($q);
+    $resultado = [];
+    foreach ($filas as $fila) {
+        if ($q !== '') {
+            $texto = inventario_texto_comparable(
+                $fila['nombre'] . ' ' . $fila['presentacion'] . ' ' . $fila['categoria']
+            );
+            if (!str_contains($texto, $q)) {
+                continue;
+            }
+        }
+        $stock = inventario_stock_producto((int) $fila['id'], true);
+        $fila['stock'] = $stock;
+        $fila['estado'] = $stock <= 0
+            ? 'agotado'
+            : ($stock <= (int) $fila['stock_minimo'] ? 'bajo' : 'ok');
+        $resultado[] = $fila;
+    }
+    return $resultado;
+}
+
+/** Un producto por id, o null si no existe. */
+function inventario_producto_obtener(int $id): ?array
+{
+    if ($id <= 0) {
+        return null;
+    }
+    $st = db()->prepare('SELECT * FROM productos WHERE id = ?');
+    $st->execute([$id]);
+    return $st->fetch() ?: null;
+}
+
+/** Un lote por id, o null si no existe. */
+function inventario_lote_obtener(int $lote_id): ?array
+{
+    $st = db()->prepare('SELECT * FROM lotes WHERE id = ?');
+    $st->execute([$lote_id]);
+    return $st->fetch() ?: null;
+}
+
+/**
+ * Ajusta el stock de un lote. $cantidad positiva suma y negativa resta.
+ * El motivo es obligatorio y queda en la nota del movimiento.
+ */
+function inventario_ajustar(int $lote_id, int $cantidad, string $motivo): int
+{
+    $motivo = trim($motivo);
+    if ($motivo === '') {
+        throw new InvalidArgumentException('Escribe el motivo del ajuste.');
+    }
+    if ($cantidad === 0) {
+        throw new InvalidArgumentException('La cantidad del ajuste no puede ser cero.');
+    }
+    if (!inventario_lote_obtener($lote_id)) {
+        throw new InvalidArgumentException('El lote no existe.');
+    }
+    return inventario_movimiento($lote_id, 'ajuste', $cantidad, null, 'Ajuste: ' . $motivo);
+}
+
+/** Movimientos recientes de un producto, con lote, pedido y usuario. */
+function inventario_movimientos(int $producto_id, int $limite = 50): array
+{
+    $st = db()->prepare(
+        'SELECT m.id, m.tipo, m.cantidad, m.pedido_id, m.nota, m.fecha,
+                l.codigo AS lote_codigo, l.vencimiento AS lote_vencimiento,
+                u.nombre AS usuario_nombre
+         FROM movimientos_inventario m
+         JOIN lotes l ON l.id = m.lote_id
+         LEFT JOIN usuarios u ON u.id = m.usuario_id
+         WHERE l.producto_id = ?
+         ORDER BY m.fecha DESC, m.id DESC
+         LIMIT ?'
+    );
+    $st->bindValue(1, $producto_id, PDO::PARAM_INT);
+    $st->bindValue(2, $limite, PDO::PARAM_INT);
+    $st->execute();
+    return $st->fetchAll();
+}
+
+/** Cambia el stock mínimo y el precio de un producto. Valida ambos. */
+function inventario_actualizar_producto(int $id, array $datos): void
+{
+    if (!inventario_producto_obtener($id)) {
+        throw new InvalidArgumentException('El producto no existe.');
+    }
+    $minimo = numero_entrada($datos['stock_minimo'] ?? null);
+    if ($minimo === null || $minimo < 0 || floor($minimo) != $minimo) {
+        throw new InvalidArgumentException('El stock mínimo debe ser un número entero mayor o igual que cero.');
+    }
+    $precio = numero_entrada($datos['precio'] ?? null);
+    if ($precio === null || $precio < 0) {
+        throw new InvalidArgumentException('El precio debe ser un número mayor o igual que cero.');
+    }
+    db()->prepare('UPDATE productos SET stock_minimo = ?, precio = ? WHERE id = ?')
+        ->execute([(int) $minimo, (int) round($precio), $id]);
+}
