@@ -349,7 +349,7 @@ a, .boton-texto { color: var(--acento-texto); }
 /* Enlaces de fila, filtros de pedidos y desplegables. */
 .tabla td > a.boton:first-child, .lista li > a.boton:first-child {
   display: inline-flex; min-height: 44px; padding: .2rem 0; background: none; border: 0; box-shadow: none;
-  color: var(--acento); font-weight: 600; border-radius: 6px; text-align: left; justify-content: flex-start; }
+  color: var(--primario); font-weight: 600; border-radius: 6px; text-align: left; justify-content: flex-start; }
 @media (hover: hover) and (pointer: fine) {
   .tabla td > a.boton:first-child:hover, .lista li > a.boton:first-child:hover { background: none; text-decoration: underline; }
 }
