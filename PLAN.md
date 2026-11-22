@@ -52,12 +52,31 @@ descontar y reintegrar pedidos, alertas) con `tests/test_inventario_base.php`, p
 | 4 | Pedidos, pagos, estados y enlace público del pedido | Codex | Copilot | Hecha |
 | 5 | Pantallas de inventario: existencias, lotes, entradas, ajustes y alertas | OpenCode (LongCat) | Copilot | Hecha |
 | 6 | Mensajes: plantillas, mensaje a un cliente y campañas | Grok a medias; lo terminó Codex | Copilot | Hecha |
-| 7 | Usuarios (admin) y pulido de `caso.php` | Por asignar | | Siguiente |
-| 8 | Guía para publicar en Hostinger | Líder | | Siguiente |
+| 7 | Usuarios (admin) con permisos por usuario y pulido de `caso.php` | Codex | Copilot | Hecha |
+| 8 | Guía para publicar (demo con Cloudflare Tunnel; producción en el VPS de Hostinger) | Líder | | En curso |
 
-Pendientes de la ronda 2: con el inventario vacío, la lista de alertas de `inventario.php` es muy larga (conviene
-plegarla); las funciones de `inventario.php` viven en la página y `producto.php` la incluye (moverlas a
-`includes/inventario.php` y ajustar `tests/test_inventario.php`).
+Pendientes de la ronda 2 resueltos el 2026-11-22: alertas de inventario plegadas y funciones movidas a
+`includes/inventario.php` (Devin, revisó Codex).
+
+## Ronda 3 — diseño, inicio útil y envíos (2026-11-22)
+
+Hecho: Liquid Glass con bisel refractivo (D4-D6, paleta «Agua clínica»), inicio con controles de hoy, pedidos
+por despachar y stock bajo, app instalable (manifiesto y service worker que solo guarda archivos estáticos),
+Usuarios en la barra superior para dejar 5 pestañas.
+
+En curso: apartado de **envíos** (`envios.php`: sin guía / esperando pago / en camino) y arreglos de pedido
+(cantidad numérica, botón Quitar), por Codex; botones rápidos **Crear pedido / Crear proceso** en cada cliente,
+por Devin.
+
+**Pendiente (pedido por Joan, para después):** una guía de seguimiento propia del pedido, que muestre dónde va y
+cómo está, además del número de guía de la transportadora. Decidir si se conecta con la API de alguna
+transportadora o si el equipo actualiza los puntos a mano.
+
+**Por decidir (Joan):** hoy todos los asesores ven a todos los clientes y pedidos. Si cada vendedor debe ver solo
+los suyos, se filtra por `asesor_id` (cambio grande: listas, inicio, Lía y búsquedas).
+
+Pendiente técnico: una prueba falló una vez y pasó 6 seguidas; sospecha: `usuario_prueba()` en `tests/run.php`
+crea usuarios con `token_aleatorio(3)` y puede repetir el nombre de usuario (UNIQUE).
 
 ### T4 — Pedidos (Codex)
 - **Archivos:** `pedidos.php`, `pedido.php`, `pedido_estado.php`, `includes/pedidos.php`, `tests/test_pedidos.php`.
