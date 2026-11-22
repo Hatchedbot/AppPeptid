@@ -40,6 +40,24 @@ $iconos = [
 <body>
 <div class="fondo-liquido" aria-hidden="true"><span></span><span></span><span></span></div>
 <?php if ($u): ?>
+<svg class="bisel-recursos" aria-hidden="true" width="0" height="0" focusable="false"><defs></defs></svg>
+<template id="bisel-plantilla">
+    <svg><filter x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage x="0" y="0" preserveAspectRatio="none" result="mapa"/>
+        <?php foreach (['r' => '32', 'g' => '33.28', 'b' => '34.56'] as $canal => $escala): ?>
+            <feDisplacementMap in="SourceGraphic" in2="mapa" scale="<?= e($escala) ?>"
+                xChannelSelector="R" yChannelSelector="G" result="desplazado"/>
+            <feColorMatrix in="desplazado" type="matrix" result="<?= e($canal) ?>"
+                values="<?= e(($canal === 'r' ? '1' : '0') . ' 0 0 0 0 0 ' . ($canal === 'g' ? '1' : '0')
+                    . ' 0 0 0 0 0 ' . ($canal === 'b' ? '1' : '0') . ' 0 0 0 0 0 1 0') ?>"/>
+        <?php endforeach; ?>
+        <feBlend in="r" in2="g" mode="screen" result="rg"/>
+        <feBlend in="rg" in2="b" mode="screen" result="rgb"/>
+        <feColorMatrix in="mapa" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0" result="canto"/>
+        <feComposite in="rgb" in2="canto" operator="in" result="borde"/>
+        <feComposite in="borde" in2="SourceGraphic" operator="over"/>
+    </filter></svg>
+</template>
 <header class="barra">
     <a class="marca" href="index.php"><span class="marca-punto" aria-hidden="true"></span><?= e(config('app.nombre')) ?></a>
     <form method="post" action="logout.php" class="salir">
