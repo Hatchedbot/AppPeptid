@@ -144,7 +144,7 @@ Se comprobó de dónde instaló cada agente el kit de `agentes/instalador` y qui
 
 **Oficiales: los publica la empresa o el proyecto dueño**
 
-Claude Code, Claude Agent Teams (Orca), Codex (OpenAI), Gemini CLI (Google), Copilot (GitHub), Grok (xAI), OpenCode y OpenCode2 (Anomaly), Kilo, Crush (Charm), Cline, Continue, Auggie (Augment), Command Code, Codebuff y Freebuff (CodebuffAI), Kimi (Moonshot), Qwen Code (Alibaba), CodeBuddy (Tencent), Qoder y Qoder-CN (Alibaba), Pi (Earendil), Goose, Aider, Mistral Vibe, Cursor, Kiro, Devin, Amp, Droid (Factory), Rovo (Atlassian), Autohand, Ante (Antigma Labs, dentro de la distribución WSL `Orca-Agents`), MiMo (Xiaomi), Prime Agent (Prime Intellect), Hermes (Nous Research), OpenClaw y Muse (Meta).
+Claude Code, Claude Agent Teams (Orca), Codex (OpenAI), Gemini CLI (Google), Copilot (GitHub), Grok (xAI), OpenCode y OpenCode2 (Anomaly), Kilo, Crush (Charm), Cline, Continue, Auggie (Augment), Command Code, Codebuff y Freebuff (CodebuffAI), Kimi (Moonshot; desinstalado el 22 nov 2026), Qwen Code (Alibaba), CodeBuddy (Tencent), Qoder y Qoder-CN (Alibaba), Pi (Earendil), Goose, Aider, Mistral Vibe, Cursor, Kiro, Devin, Amp, Droid (Factory), Rovo (Atlassian), Autohand, Ante (Antigma Labs, dentro de la distribución WSL `Orca-Agents`), MiMo (Xiaomi), Prime Agent (Prime Intellect), Hermes (Nous Research), OpenClaw y Muse (Meta).
 
 Antigravity no se instaló con el kit; se instaló aparte desde Google y su origen no se volvió a comprobar.
 
