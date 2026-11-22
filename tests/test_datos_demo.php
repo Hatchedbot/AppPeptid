@@ -1,7 +1,7 @@
 <?php
 require_once RAIZ . '/herramientas/datos_demo.php';
 
-prueba('llena una SQLite vacía con datos actuales y rechaza repetir el llenado sin forzar', function () {
+prueba('llena una SQLite vacía con datos actuales y se niega si ya tiene clientes', function () {
     // El corredor comparte una conexión entre módulos. Corre este caso en una conexión limpia.
     if (($GLOBALS['argv'][1] ?? '') !== 'datos_demo') {
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' datos_demo 2>&1', $salida, $codigo);
@@ -43,13 +43,15 @@ prueba('llena una SQLite vacía con datos actuales y rechaza repetir el llenado 
     } catch (InvalidArgumentException $ex) {
         contiene('ya tiene clientes', $ex->getMessage());
     }
+    igual(14, (int) db()->query('SELECT COUNT(*) FROM clientes')->fetchColumn());
+    igual(3, (int) db()->query('SELECT COUNT(*) FROM usuarios')->fetchColumn());
 });
 
-prueba('rechaza un DSN MySQL incluso con --forzar', function () {
+prueba('rechaza un DSN MySQL', function () {
     $dsn = $GLOBALS['CONFIG']['db']['dsn'];
     $GLOBALS['CONFIG']['db']['dsn'] = 'mysql:host=invalid;dbname=demo';
     try {
-        llenar_demo(true);
+        llenar_demo();
         throw new RuntimeException('Se aceptó un DSN MySQL.');
     } catch (InvalidArgumentException $ex) {
         contiene('DSN SQLite', $ex->getMessage());

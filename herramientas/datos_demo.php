@@ -21,7 +21,7 @@ function demo_validar_dsn(): void
 }
 
 /** Devuelve las credenciales generadas, para que la consola las guarde sin mostrarlas. */
-function llenar_demo(bool $forzar = false): array
+function llenar_demo(): array
 {
     demo_validar_dsn();
     if (!es_sqlite()) {
@@ -30,10 +30,11 @@ function llenar_demo(bool $forzar = false): array
     // La búsqueda de clientes de la app solo muestra activos.
     $consulta = db()->prepare('SELECT 1 FROM clientes LIMIT 1');
     $consulta->execute();
-    if ($consulta->fetchColumn() && !$forzar) {
-        throw new InvalidArgumentException('La base ya tiene clientes. Usa --forzar para agregar datos de demo.');
-    }
+    $hay_clientes = $consulta->fetchColumn() !== false;
     $consulta->closeCursor();
+    if ($hay_clientes) {
+        throw new InvalidArgumentException('La base ya tiene clientes. Para rehacer la demo, borra el archivo demo.sqlite.');
+    }
 
     $productos = inventario_productos();
     if (count($productos) < 12) {
@@ -188,9 +189,8 @@ function llenar_demo(bool $forzar = false): array
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) {
     try {
-        $opciones = array_slice($argv, 1);
-        if ($opciones !== [] && $opciones !== ['--forzar']) {
-            throw new InvalidArgumentException('Uso: php herramientas/datos_demo.php [--forzar]');
+        if (count($argv) !== 1) {
+            throw new InvalidArgumentException('Uso: php herramientas/datos_demo.php');
         }
         demo_validar_dsn();
         $ruta = RAIZ . '/datos/LEEME-DEMO.txt';
@@ -200,7 +200,7 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) {
         }
         $mascara = umask(0077);
         try {
-            $archivo = @fopen($ruta, 'ab');
+            $archivo = @fopen($ruta, 'cb');
         } finally {
             umask($mascara);
         }
@@ -211,12 +211,16 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) {
             if (!flock($archivo, LOCK_EX)) {
                 throw new RuntimeException('No se pudo bloquear el archivo de credenciales.');
             }
-            $claves = llenar_demo($opciones === ['--forzar']);
-            $contenido = "BRDG Seguimiento | Accesos de demostración | " . ahora() . "\n";
+            if (PHP_OS_FAMILY !== 'Windows') {
+                @chmod($ruta, 0600);
+            }
+            $claves = llenar_demo();
+            $contenido = "Este archivo es solo para la demo. No lo compartas.\n";
+            $contenido .= "BRDG Seguimiento | Accesos de demostración | " . ahora() . "\n";
             foreach ($claves as $usuario => $clave) {
                 $contenido .= "$usuario: $clave\n";
             }
-            if (@fwrite($archivo, $contenido . "\n") !== strlen($contenido) + 1 || !@fflush($archivo)) {
+            if (!@ftruncate($archivo, 0) || @fwrite($archivo, $contenido) !== strlen($contenido) || !@fflush($archivo)) {
                 throw new RuntimeException('No se pudieron guardar las credenciales completas.');
             }
         } finally {
