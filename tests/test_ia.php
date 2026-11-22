@@ -320,3 +320,115 @@ prueba('Lía reconoce al cliente con solo nombre y apellido', function () {
     $r = lia_buscar_clientes('como va mariana');
     igual([], array_column($r['completos'], 'nombre'), 'solo el nombre no basta');
 });
+
+prueba('la ficha y el proceso se abren con datos locales sin esperar a la IA', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    $usuario = usuario_prueba();
+    $cliente = t3_crear_cliente('Salomé Giraldo Prueba', '3009871142');
+    $caso = t3_crear_caso($cliente['id'], 'Proceso actual');
+    $llamadas = 0;
+    $GLOBALS['IA_FALSA'] = function () use (&$llamadas) {
+        $llamadas++;
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+            'respuesta' => 'Claro, aquí tienes la ficha de ese cliente.',
+        ])];
+    };
+
+    $ficha = lia_responder($usuario, 'Abre la ficha de Salomé', []);
+    $proceso = lia_responder($usuario, 'Quiero ir al proceso de Salomé', []);
+    t3_crear_cliente('Salomé Pardo Prueba', '3009871143');
+    $ambiguo = lia_responder($usuario, 'Quiero ver la ficha de Salomé', []);
+    unset($GLOBALS['IA_FALSA']);
+
+    igual('abrir_cliente', $ficha['accion']);
+    igual('cliente.php?id=' . $cliente['id'], $ficha['url']);
+    igual('Aquí tienes la ficha de Salomé.', $ficha['respuesta']);
+    igual('abrir_caso', $proceso['accion']);
+    igual('caso.php?id=' . $caso, $proceso['url']);
+    igual('buscar', $ambiguo['accion']);
+    igual('clientes.php?q=Salom%C3%A9', $ambiguo['url']);
+    igual(0, $llamadas);
+});
+
+prueba('la búsqueda ignora términos de la IA y elimina aliases de todo el texto visible', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    $usuario = usuario_prueba();
+    t3_crear_cliente('Natalia Ceballos', '3009871144');
+    $GLOBALS['IA_FALSA'] = fn() => ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+        'respuesta' => 'Encontré a Cliente 1. Cliente 1 tiene ficha.',
+        'accion' => 'buscar',
+        'busqueda' => 'Cliente 1',
+        'url' => 'clientes.php?q=Cliente%201',
+    ])];
+    $resuelta = lia_responder($usuario, 'Busca Natalia', []);
+
+    $GLOBALS['IA_FALSA'] = fn() => ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+        'respuesta' => 'Cliente 42 tiene ficha. Abre ese cliente.',
+        'accion' => 'buscar',
+        'busqueda' => 'Cliente 42',
+    ])];
+    $desconocida = lia_responder($usuario, 'Busca Cliente%2042', []);
+    unset($GLOBALS['IA_FALSA']);
+
+    igual('clientes.php?q=Natalia', $resuelta['url']);
+    igual('Aquí tienes los resultados de búsqueda para «Natalia».', $resuelta['respuesta']);
+    igual('clientes.php', $desconocida['url']);
+    igual('No pude identificar a quién se refiere la respuesta. Escribe el nombre para buscarlo.', $desconocida['respuesta']);
+});
+
+prueba('la agenda incluye solo diez casos activos de hoy o vencidos y protege datos personales', function () {
+    db()->beginTransaction();
+    try {
+        t3_config_ia();
+        t3_limpiar_uso();
+        $usuario = usuario_prueba();
+        db()->exec('UPDATE casos SET proximo_contacto = NULL');
+        $actual = t3_crear_cliente('Leonor Salazar', '3175557654', 'Santa Rosa de Cabal');
+        $vencido = t3_crear_cliente('Efraín Torres', '3175558765', 'Zipaquirá');
+        $hoy = hoy();
+        $ayer = (new DateTimeImmutable($hoy))->modify('-1 day')->format('Y-m-d');
+        $manana = (new DateTimeImmutable($hoy))->modify('+1 day')->format('Y-m-d');
+        t3_crear_caso($actual['id'], 'Control actual');
+        $fecha = db()->prepare('UPDATE casos SET proximo_contacto = ? WHERE id = ?');
+        $fecha->execute([$ayer, t3_crear_caso($vencido['id'], 'Control vencido')]);
+        $fecha->execute([$manana, t3_crear_caso($actual['id'], 'Control futuro')]);
+        t3_crear_caso($actual['id'], 'Control cerrado', 'cerrado');
+        for ($i = 2; $i <= 12; $i++) {
+            $dia = (new DateTimeImmutable($hoy))->modify("-$i days")->format('Y-m-d');
+            $fecha->execute([$dia, t3_crear_caso($vencido['id'], 'Otro control vencido')]);
+        }
+
+        $preguntas = [];
+        $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$preguntas) {
+            $preguntas[] = $payload['messages'][1]['content'];
+            return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json([
+                'respuesta' => 'Cliente 1 tiene control hoy y Cliente 2 está atrasado.',
+            ])];
+        };
+        $respuesta = lia_responder($usuario, '¿Qué clientes tienen controles pendientes hoy?', []);
+        $atrasados = lia_responder($usuario, '¿Quién está atrasado?', $_SESSION['lia_historial']);
+        $privada = '¿Hay pendientes? Leonor Salazar, 317 555 7654, persona@ejemplo.test, SANTA ROSA DE CABAL y Zipaquira.';
+        lia_responder($usuario, $privada, $_SESSION['lia_historial']);
+        unset($GLOBALS['IA_FALSA']);
+
+        igual(3, count($preguntas));
+        foreach ($preguntas as $pregunta) {
+            preg_match('/Agenda de casos activos para hoy y vencidos .*?: (\[.*\])/', $pregunta, $linea);
+            $agenda = json_decode($linea[1] ?? 'null', true);
+            igual(10, count($agenda ?? []));
+            igual(['alias' => 'Cliente 1', 'proximo_contacto' => $hoy], $agenda[0]);
+            igual(['alias' => 'Cliente 2', 'proximo_contacto' => $ayer], $agenda[1]);
+            foreach (['Leonor', 'Salazar', 'Efraín', 'Torres', '3175557654', '317 555 7654', '3175558765',
+                      'persona@ejemplo.test', 'Santa Rosa de Cabal', 'SANTA ROSA DE CABAL', 'Zipaquirá', 'Zipaquira'] as $dato) {
+                verdadero(!str_contains($pregunta, $dato), 'no debe enviarse ' . $dato);
+            }
+        }
+        igual('Leonor tiene control hoy y Efraín está atrasado.', $respuesta['respuesta']);
+        igual($respuesta['respuesta'], $atrasados['respuesta']);
+    } finally {
+        unset($GLOBALS['IA_FALSA']);
+        db()->rollBack();
+    }
+});

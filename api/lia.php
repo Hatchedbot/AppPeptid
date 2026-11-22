@@ -28,14 +28,6 @@ if ($texto === '') {
     ]);
 }
 
-if (!ia_disponible()) {
-    json_respuesta([
-        'respuesta' => 'La asistente no está configurada todavía.',
-        'accion' => 'ninguna',
-        'url' => '',
-    ]);
-}
-
 try {
     $respuesta = lia_responder($usuario, $texto, $_SESSION['lia_historial'] ?? []);
 } catch (RuntimeException $ex) {
