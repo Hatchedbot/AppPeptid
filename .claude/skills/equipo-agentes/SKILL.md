@@ -67,7 +67,7 @@ Cuando un agente responde con límite de cuota, pasa su tarea al siguiente de su
 | Devin | OpenCode o Kilo |
 | Codex (implementando) | El líder divide la tarea en partes pequeñas para OpenCode y Kilo |
 | Codex (revisando) | Copilot → Grok (solo si no escribió ese código) |
-| Antigravity | Cursor → OpenCode |
+| Antigravity | Codex → Cursor → OpenCode (el 22 nov 2026 Cursor y OpenCode fallaron en interfaz; Codex entregó) |
 | Kiro | El líder especifica por su cuenta |
 | Claude (líder) | Para y avisa al usuario: el liderazgo no se delega |
 
@@ -96,6 +96,20 @@ Si el proyecto empieza de cero, sigue antes `~/SkillsClaudeCode/agentes/PROYECTO
 - **El informe de un trabajador es una afirmación, no una prueba.** Lo hecho se demuestra con la comprobación del paso 4.
 - **Extensiones de terceros de OpenClaw: revísalas antes de instalarlas**; su tienda ha tenido incidentes de seguridad.
 - **Si un agente no arranca desde Orca** con «command not found», es que solo tiene lanzador `.cmd` y la terminal de Orca (Git Bash) no lo encuentra sin extensión. Ejecuta `bash ~/SkillsClaudeCode/agentes/instalador/crear-atajos-bash.sh` y reinicia Orca. Así se arreglaron Kilo, Devin y Cursor el 22 nov 2026.
+
+## Fallos vistos al lanzar agentes (rediseño de AppPeptid, 22 nov 2026)
+
+De seis lanzamientos de interfaz, solo Codex entregó a la primera. Antes de dar por lanzado un trabajador, comprueba con `orca agent list` que aparece `working` y, si no aparece, lee su terminal con `orca terminal read --terminal <handle> --screen`.
+
+| Agente | Qué pasó | Qué hacer |
+|---|---|---|
+| Antigravity | «Antigravity isn't signed in» | Que el usuario entre en Settings → Accounts → Antigravity → Cuenta de Google (no API key, Enterprise ni Agent Platform) |
+| Antigravity | Con la variable de Windows `GEMINI_API_KEY` definida, la usa antes que la cuenta de Google: no gasta el plan del usuario sino la clave, y `/usage` falla | Dejar `GEMINI_API_KEY` vacía solo para Antigravity en la configuración de agentes de Orca; no borrarla de Windows (la usan last30days y Crush) |
+| Antigravity | «Actualizar» del runtime falla con `EPERM ... rename` | Cerrar sus pestañas de chat en Orca (sus procesos bloquean la carpeta) y reintentar; si sigue, reiniciar Orca cuando no haya trabajadores |
+| Cursor | Un hook preToolUse roto (PowerShell dentro de bash) le impidió leer y escribir; además intentó bajar el código de GitHub | Relevar a Codex; revisar los hooks de Cursor antes de volver a usarlo |
+| Kilo | `orca agent launch` lo abre en una terminal sin entregar el encargo; enviado con `orca terminal send`, el texto se corta en los `<` | Guardar el encargo en `ENCARGO.txt` del worktree (añadido a `.git/info/exclude`) y enviar solo «Lee ENCARGO.txt y cúmplelo» |
+| Kilo | Se queda esperando «Permission required» en cada comando y nadie lo aprueba | No usarlo sin supervisión desde Orca hasta configurar sus permisos automáticos |
+| OpenCode | «This request would exceed your available credits» a mitad de tarea, con cambios sin commit | Relevar conservando el diff; el relevo debe revisar lo heredado (Codex encontró un error que dejó OpenCode) |
 
 ## Caducidad
 
