@@ -16,7 +16,7 @@ if ($nuevo) {
     $st->execute([$cliente_id]);
     $nombre_cliente = $st->fetchColumn();
     $ruta = 'caso.php?nuevo=1&cliente=' . $cliente_id;
-    $titulo = 'Nuevo caso';
+    $titulo = 'Nuevo proceso';
 } else {
     $caso = caso_obtener($caso_id);
     $nombre_cliente = $caso['nombre_cliente'] ?? null;
@@ -110,24 +110,58 @@ if (!$nuevo) {
 $activo = 'clientes';
 require __DIR__ . '/includes/header.php';
 ?>
-<h1><?= e($titulo) ?></h1>
-<p>Cliente: <a href="cliente.php?id=<?= e($nuevo ? $cliente_id : $caso['cliente_id']) ?>"><?= e($nombre_cliente) ?></a></p>
+<div class="encabezado">
+    <div>
+        <h1><?= e($titulo) ?></h1>
+        <p class="suave">Cliente: <?= e($nombre_cliente) ?></p>
+    </div>
+    <div class="fila">
+        <a class="boton boton-sec" href="cliente.php?id=<?= e($nuevo ? $cliente_id : $caso['cliente_id']) ?>">Volver a la ficha</a>
+        <?php if ($nuevo): ?>
+            <button type="submit" class="boton" form="formulario-caso">Crear proceso</button>
+        <?php else: ?>
+            <a class="boton" href="#nuevo-seguimiento">Registrar seguimiento</a>
+        <?php endif; ?>
+    </div>
+</div>
 
 <?php if ($nuevo): ?>
-<form method="post" class="tarjeta formulario">
+<form method="post" id="formulario-caso" class="tarjeta formulario" autocomplete="off">
+    <h2>Datos del proceso</h2>
     <?= campo_csrf() ?>
-    <label class="campo">Título <input name="titulo" required autofocus></label>
-    <label class="campo">Objetivo <textarea name="objetivo" rows="3"></textarea></label>
-    <label class="campo">Fecha de inicio <input type="date" name="fecha_inicio" value="<?= e(hoy()) ?>" required></label>
-    <div class="fila">
-        <label class="campo">Peso inicial (kg) <input name="peso_inicial" inputmode="decimal"></label>
-        <label class="campo">Peso meta (kg) <input name="peso_meta" inputmode="decimal"></label>
+    <div class="campo">
+        <label for="titulo">Título</label>
+        <input id="titulo" type="text" name="titulo" required>
     </div>
-    <label class="campo">Próximo contacto <input type="date" name="proximo_contacto"></label>
-    <button class="boton">Crear caso</button>
+    <div class="campo">
+        <label for="objetivo">Objetivo</label>
+        <textarea id="objetivo" name="objetivo" rows="3"></textarea>
+    </div>
+    <div class="campo">
+        <label for="fecha-inicio">Fecha de inicio</label>
+        <input id="fecha-inicio" type="date" name="fecha_inicio" value="<?= e(hoy()) ?>" required>
+    </div>
+    <div class="fila">
+        <div class="campo">
+            <label for="peso-inicial">Peso inicial (kg)</label>
+            <input id="peso-inicial" type="text" name="peso_inicial" inputmode="decimal">
+        </div>
+        <div class="campo">
+            <label for="peso-meta">Peso meta (kg)</label>
+            <input id="peso-meta" type="text" name="peso_meta" inputmode="decimal">
+        </div>
+    </div>
+    <div class="campo">
+        <label for="proximo-contacto">Próximo contacto</label>
+        <input id="proximo-contacto" type="date" name="proximo_contacto">
+    </div>
+    <button class="boton">Crear proceso</button>
 </form>
 <?php else: ?>
 <section class="tarjeta">
+    <h2>Resumen del proceso</h2>
+    <?php $clases_estado = ['activo' => 'etiqueta-ok', 'pausado' => 'etiqueta-alerta']; ?>
+    <p><span class="etiqueta <?= e($clases_estado[$caso['estado']] ?? '') ?>"><?= e($estados[$caso['estado']] ?? $caso['estado']) ?></span></p>
     <p>Fecha de inicio: <?= e(fecha_corta($caso['fecha_inicio'])) ?></p>
     <?php if ($caso['objetivo']): ?><p>Objetivo: <?= nl2br(e($caso['objetivo'])) ?></p><?php endif; ?>
     <p>Peso meta: <?= e($caso['peso_meta'] === null ? '—' : numero_corto($caso['peso_meta']) . ' kg') ?></p>
@@ -139,29 +173,36 @@ require __DIR__ . '/includes/header.php';
             (<?= e(numero_corto($progreso['diferencia'])) ?> kg)
         <?php endif; ?>
     </p>
-    <form method="post" class="formulario">
+    <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="actualizar">
         <div class="fila">
-            <label class="campo">Estado
-                <select name="estado">
+            <div class="campo">
+                <label for="estado">Estado</label>
+                <select id="estado" name="estado">
                     <?php foreach ($estados as $valor => $etiqueta): ?>
                         <option value="<?= e($valor) ?>" <?= $caso['estado'] === $valor ? 'selected' : '' ?>><?= e($etiqueta) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </label>
-            <label class="campo">Próximo contacto <input type="date" name="proximo_contacto" value="<?= e($caso['proximo_contacto']) ?>"></label>
+            </div>
+            <div class="campo">
+                <label for="contacto-caso">Próximo contacto</label>
+                <input id="contacto-caso" type="date" name="proximo_contacto" value="<?= e($caso['proximo_contacto']) ?>">
+            </div>
         </div>
-        <button class="boton">Actualizar caso</button>
+        <button class="boton">Guardar cambios</button>
     </form>
 </section>
 
 <section class="tarjeta">
     <h2>Plan actual e historial</h2>
-    <?php if (!$planes): ?><p class="suave">Todavía no hay un plan para este caso.</p><?php endif; ?>
+    <?php if (!$planes): ?>
+        <p class="suave">Crea el primer plan para este proceso.</p>
+        <a class="boton boton-sec" href="#nueva-version">Ir al formulario del plan</a>
+    <?php endif; ?>
     <?php foreach ($planes as $indice => $plan): ?>
         <details <?= $indice === 0 ? 'open' : '' ?>>
-            <summary><?= $indice === 0 ? 'Actual · ' : '' ?>Versión <?= e($plan['version']) ?> · <?= e(fecha_corta($plan['creado'])) ?></summary>
+            <summary class="boton boton-sec"><?= $indice === 0 ? 'Actual · ' : '' ?>Versión <?= e($plan['version']) ?> · <?= e(fecha_corta($plan['creado'])) ?></summary>
             <p>Indicaciones: <?= nl2br(e($plan['indicaciones'])) ?></p>
             <p>Motivo: <?= nl2br(e($plan['motivo_cambio'])) ?></p>
             <ul>
@@ -171,7 +212,7 @@ require __DIR__ . '/includes/header.php';
             </ul>
             <?php if ($plan['enviado']): ?><p>Marcado como enviado el <?= e(fecha_corta($plan['enviado'])) ?>.</p><?php endif; ?>
             <?php if ($indice === 0): ?>
-                <form method="post" target="_blank">
+                <form method="post" target="_blank" class="formulario">
                     <?= campo_csrf() ?>
                     <input type="hidden" name="accion" value="enviar_plan">
                     <input type="hidden" name="plan_id" value="<?= e($plan['id']) ?>">
@@ -183,37 +224,61 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <section class="tarjeta">
-    <h2>Nueva versión del plan</h2>
-    <form method="post" class="formulario">
+    <h2 id="nueva-version"><?= $planes ? 'Nueva versión del plan' : 'Primer plan' ?></h2>
+    <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="nueva_version">
-        <label class="campo">Indicaciones generales <textarea name="indicaciones" rows="3"></textarea></label>
-        <label class="campo">Motivo del cambio <textarea name="motivo" rows="2"></textarea></label>
+        <div class="campo">
+            <label for="indicaciones">Indicaciones generales</label>
+            <textarea id="indicaciones" name="indicaciones" rows="3"></textarea>
+        </div>
+        <div class="campo">
+            <label for="motivo">Motivo del cambio</label>
+            <textarea id="motivo" name="motivo" rows="2"></textarea>
+        </div>
         <div id="items-plan"></div>
-        <button type="button" class="boton boton-sec" id="agregar-item">Agregar ítem</button>
-        <button class="boton">Guardar nueva versión</button>
+        <div class="fila">
+            <button type="button" class="boton boton-sec" id="agregar-item">Agregar ítem</button>
+            <button class="boton"><?= $planes ? 'Guardar nueva versión' : 'Guardar plan' ?></button>
+        </div>
     </form>
     <template id="plantilla-item">
-        <fieldset class="formulario">
+        <fieldset class="tarjeta formulario">
             <legend>Ítem del plan</legend>
             <div class="fila">
-                <label class="campo">Producto del catálogo
+                <div class="campo">
+                    <label>Producto del catálogo</label>
                     <select data-campo="producto_id">
                         <option value="">Selecciona un producto</option>
                         <?php foreach ($productos as $producto): ?>
                             <option value="<?= e($producto['id']) ?>"><?= e($producto['nombre'] . ' · ' . $producto['presentacion']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </label>
-                <label class="campo">Producto en texto libre <input data-campo="producto_nombre"></label>
+                </div>
+                <div class="campo">
+                    <label>Producto en texto libre</label>
+                    <input type="text" data-campo="producto_nombre">
+                </div>
             </div>
             <div class="fila">
-                <label class="campo">Dosis <input data-campo="dosis"></label>
-                <label class="campo">Frecuencia <input data-campo="frecuencia"></label>
-                <label class="campo">Duración <input data-campo="duracion"></label>
+                <div class="campo">
+                    <label>Dosis</label>
+                    <input type="text" data-campo="dosis">
+                </div>
+                <div class="campo">
+                    <label>Frecuencia</label>
+                    <input type="text" data-campo="frecuencia">
+                </div>
+                <div class="campo">
+                    <label>Duración</label>
+                    <input type="text" data-campo="duracion">
+                </div>
             </div>
-            <label class="campo">Notas internas <textarea data-campo="notas"></textarea></label>
-            <button type="button" class="boton boton-sec">Quitar ítem</button>
+            <div class="campo">
+                <label>Notas internas</label>
+                <textarea data-campo="notas"></textarea>
+            </div>
+            <button type="button" class="boton boton-peligro">Quitar ítem</button>
         </fieldset>
     </template>
     <script>
@@ -223,10 +288,17 @@ require __DIR__ . '/includes/header.php';
         function agregarItem() {
             const item = plantillaItem.content.firstElementChild.cloneNode(true);
             for (const campo of item.querySelectorAll('[data-campo]')) {
+                campo.id = 'item-' + indiceItem + '-' + campo.dataset.campo;
+                campo.previousElementSibling.htmlFor = campo.id;
                 campo.name = 'items[' + indiceItem + '][' + campo.dataset.campo + ']';
             }
             indiceItem++;
-            item.querySelector('button').addEventListener('click', () => item.remove());
+            item.querySelector('button').addEventListener('click', () => {
+                if (confirm('¿Quieres quitar este ítem del plan?')) {
+                    item.remove();
+                    document.querySelector('#agregar-item').focus();
+                }
+            });
             contenedorItems.append(item);
         }
         document.querySelector('#agregar-item').addEventListener('click', agregarItem);
@@ -236,10 +308,13 @@ require __DIR__ . '/includes/header.php';
 
 <section class="tarjeta">
     <h2>Seguimientos</h2>
-    <?php if (!$seguimientos): ?><p class="suave">Todavía no hay seguimientos.</p><?php endif; ?>
+    <?php if (!$seguimientos): ?>
+        <p class="suave">Registra el primer seguimiento para ver el avance del cliente.</p>
+        <a class="boton boton-sec" href="#nuevo-seguimiento">Ir al formulario de seguimiento</a>
+    <?php endif; ?>
     <?php foreach ($seguimientos as $seguimiento): ?>
         <details>
-            <summary><?= e(fecha_corta($seguimiento['fecha'])) ?> · <?= e($tipos[$seguimiento['tipo']] ?? $seguimiento['tipo']) ?>
+            <summary class="boton boton-sec"><?= e(fecha_corta($seguimiento['fecha'])) ?> · <?= e($tipos[$seguimiento['tipo']] ?? $seguimiento['tipo']) ?>
                 <?php if ($seguimiento['peso'] !== null): ?> · <?= e(numero_corto($seguimiento['peso'])) ?> kg<?php endif; ?>
             </summary>
             <p>Cintura: <?= e($seguimiento['cintura_cm'] === null ? '—' : numero_corto($seguimiento['cintura_cm']) . ' cm') ?></p>
@@ -248,35 +323,58 @@ require __DIR__ . '/includes/header.php';
             <p>Nota: <?= nl2br(e($seguimiento['nota'])) ?></p>
         </details>
     <?php endforeach; ?>
-    <h3>Nuevo seguimiento</h3>
-    <form method="post" class="formulario">
+</section>
+
+<section class="tarjeta">
+    <h2 id="nuevo-seguimiento">Nuevo seguimiento</h2>
+    <form method="post" class="formulario" autocomplete="off">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="seguimiento">
         <div class="fila">
-            <label class="campo">Fecha <input type="date" name="fecha" value="<?= e(hoy()) ?>" required></label>
-            <label class="campo">Tipo
-                <select name="tipo">
+            <div class="campo">
+                <label for="fecha">Fecha</label>
+                <input id="fecha" type="date" name="fecha" value="<?= e(hoy()) ?>" required>
+            </div>
+            <div class="campo">
+                <label for="tipo">Tipo</label>
+                <select id="tipo" name="tipo">
                     <?php foreach ($tipos as $valor => $etiqueta): ?>
                         <option value="<?= e($valor) ?>"><?= e($etiqueta) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </label>
+            </div>
         </div>
         <div class="fila">
-            <label class="campo">Peso (kg) <input name="peso" inputmode="decimal"></label>
-            <label class="campo">Cintura (cm) <input name="cintura" inputmode="decimal"></label>
-            <label class="campo">Adherencia
-                <select name="adherencia">
+            <div class="campo">
+                <label for="peso">Peso (kg)</label>
+                <input id="peso" type="text" name="peso" inputmode="decimal">
+            </div>
+            <div class="campo">
+                <label for="cintura">Cintura (cm)</label>
+                <input id="cintura" type="text" name="cintura" inputmode="decimal">
+            </div>
+            <div class="campo">
+                <label for="adherencia">Adherencia</label>
+                <select id="adherencia" name="adherencia">
                     <option value="">Sin registrar</option>
                     <?php foreach ($adherencias as $valor => $etiqueta): ?>
                         <option value="<?= e($valor) ?>"><?= e($etiqueta) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </label>
+            </div>
         </div>
-        <label class="campo">Efectos <textarea name="efectos"></textarea></label>
-        <label class="campo">Nota <textarea name="nota"></textarea></label>
-        <label class="campo">Nuevo próximo contacto (opcional) <input type="date" name="proximo_contacto"></label>
+        <div class="campo">
+            <label for="efectos">Efectos</label>
+            <textarea id="efectos" name="efectos"></textarea>
+        </div>
+        <div class="campo">
+            <label for="nota">Nota</label>
+            <textarea id="nota" name="nota"></textarea>
+        </div>
+        <div class="campo">
+            <label for="contacto-seguimiento">Nuevo próximo contacto (opcional)</label>
+            <input id="contacto-seguimiento" type="date" name="proximo_contacto">
+        </div>
         <button class="boton">Agregar seguimiento</button>
     </form>
 </section>
