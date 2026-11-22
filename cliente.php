@@ -30,10 +30,12 @@ if (!$cliente) {
     $titulo = 'Cliente no encontrado';
     require __DIR__ . '/includes/header.php';
     ?>
-    <div class="tarjeta">
-        <h1>No encontramos ese cliente</h1>
-        <p class="suave">Puede que se haya borrado o que el enlace esté mal.</p>
-        <p><a class="boton" href="clientes.php">Volver a clientes</a></p>
+    <div class="encabezado">
+        <div>
+            <h1>No encontramos ese cliente</h1>
+            <p class="suave">Busca al cliente en la lista para abrir su ficha.</p>
+        </div>
+        <a class="boton" href="clientes.php">Volver a clientes</a>
     </div>
     <?php
     require __DIR__ . '/includes/footer.php';
@@ -77,24 +79,29 @@ if ($es_nuevo || $es_edicion) {
     <div class="encabezado">
         <div>
             <h1><?= $es_nuevo ? 'Nuevo cliente' : 'Editar cliente' ?></h1>
-            <p class="suave">Los datos de salud son sensibles: trátalos con cuidado.</p>
+            <p class="suave">Registra los datos de contacto y del seguimiento.</p>
         </div>
-        <a class="boton boton-sec" href="<?= $es_nuevo ? 'clientes.php' : 'cliente.php?id=' . (int) $id ?>">
-            <?= $es_nuevo ? 'Volver a clientes' : 'Volver a la ficha' ?>
-        </a>
+        <div class="fila">
+            <a class="boton boton-sec" href="<?= $es_nuevo ? 'clientes.php' : 'cliente.php?id=' . (int) $id ?>">
+                <?= $es_nuevo ? 'Volver a clientes' : 'Volver a la ficha' ?>
+            </a>
+            <button type="submit" form="formulario-cliente" class="boton"><?= $es_nuevo ? 'Crear cliente' : 'Guardar cambios' ?></button>
+        </div>
     </div>
 
     <?php if ($error): ?>
-        <div class="aviso aviso-error">
+        <div class="aviso aviso-error" role="alert">
             <?= e($error) ?>
             <?php if ($existente): ?>
-                <div><a href="cliente.php?id=<?= (int) $existente['id'] ?>">Abrir la ficha de <?= e($existente['nombre']) ?></a></div>
+                <div><a class="boton boton-sec" href="cliente.php?id=<?= (int) $existente['id'] ?>">Abrir la ficha de <?= e($existente['nombre']) ?></a></div>
             <?php endif; ?>
         </div>
     <?php endif; ?>
 
-    <form method="post" class="tarjeta formulario"
+    <form method="post" id="formulario-cliente" class="tarjeta formulario" autocomplete="off"
           action="<?= $es_nuevo ? 'cliente.php?nuevo=1' : 'cliente.php?id=' . (int) $id . '&amp;editar=1' ?>">
+        <h2>Datos del cliente</h2>
+        <p class="suave">Los campos con asterisco son obligatorios.</p>
         <?= campo_csrf() ?>
 
         <div class="campo">
@@ -106,7 +113,7 @@ if ($es_nuevo || $es_edicion) {
         <div class="fila">
             <div class="campo">
                 <label for="telefono">Teléfono *</label>
-                <input type="tel" id="telefono" name="telefono" maxlength="20" required autocomplete="tel"
+                <input type="tel" id="telefono" name="telefono" maxlength="20" required inputmode="tel" autocomplete="tel"
                        placeholder="311 503 4356" value="<?= e($cliente['telefono'] ?? '') ?>">
             </div>
             <div class="campo">
@@ -125,12 +132,12 @@ if ($es_nuevo || $es_edicion) {
         <div class="fila">
             <div class="campo">
                 <label for="fecha_nacimiento">Fecha de nacimiento</label>
-                <input type="date" id="fecha_nacimiento" name="fecha_nacimiento"
+                <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" autocomplete="bday"
                        value="<?= e($cliente['fecha_nacimiento'] ?? '') ?>">
             </div>
             <div class="campo">
                 <label for="sexo">Sexo</label>
-                <select id="sexo" name="sexo">
+                <select id="sexo" name="sexo" autocomplete="sex">
                     <option value="">Sin especificar</option>
                     <?php foreach (['Femenino', 'Masculino', 'Otro'] as $opcion): ?>
                         <option value="<?= e($opcion) ?>" <?= ($cliente['sexo'] ?? '') === $opcion ? 'selected' : '' ?>>
@@ -153,9 +160,9 @@ if ($es_nuevo || $es_edicion) {
 
         <div class="campo">
             <label for="condiciones">Condiciones de salud</label>
-            <textarea id="condiciones" name="condiciones"
+            <textarea id="condiciones" name="condiciones" aria-describedby="ayuda-condiciones"
                       placeholder="Alergias, medicamentos, enfermedades o cirugías"><?= e($cliente['condiciones'] ?? '') ?></textarea>
-            <span class="ayuda">Dato sensible. Solo para el seguimiento del cliente.</span>
+            <span class="ayuda" id="ayuda-condiciones">Dato sensible. Solo para el seguimiento del cliente.</span>
         </div>
 
         <div class="campo">
@@ -166,11 +173,13 @@ if ($es_nuevo || $es_edicion) {
         <?php if ($es_edicion && !empty($cliente['consentimiento_fecha'])): ?>
             <p class="suave">Autorización registrada el <?= e(fecha_corta($cliente['consentimiento_fecha'])) ?>.</p>
         <?php else: ?>
-            <label class="casilla">
-                <input type="checkbox" name="consentimiento" value="1"
+            <label class="casilla" for="consentimiento">
+                <input type="checkbox" id="consentimiento" name="consentimiento" value="1"
                        <?= !empty($cliente['consentimiento']) ? 'checked' : '' ?>
                        <?= $es_nuevo ? 'required' : '' ?>>
-                <span>El cliente autorizó el tratamiento de sus datos personales y de salud para hacer seguimiento de su proceso (Ley 1581 de 2012)</span>
+                <span>El cliente autorizó el tratamiento de sus datos personales y de salud para hacer seguimiento de su proceso.<br>
+                    <span class="suave">Ley 1581 de 2012</span>
+                </span>
             </label>
         <?php endif; ?>
 
@@ -206,25 +215,25 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="fila">
         <a class="boton boton-sec" href="<?= e($whatsapp) ?>" target="_blank" rel="noopener">Escribir por WhatsApp</a>
-        <a class="boton" href="cliente.php?id=<?= (int) $id ?>&amp;editar=1">Editar</a>
+        <a class="boton" href="cliente.php?id=<?= (int) $id ?>&amp;editar=1">Editar ficha</a>
     </div>
 </div>
 
 <section class="tarjeta">
     <h2>Datos</h2>
-    <table class="tabla">
+    <table class="tabla tabla-movil">
         <tbody>
-            <tr><th>Teléfono</th><td><?= e($cliente['telefono']) ?></td></tr>
-            <tr><th>Ciudad</th><td><?= e($cliente['ciudad'] ?? '') ?: '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Correo</th><td><?= e($cliente['correo'] ?? '') ?: '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Fecha de nacimiento</th><td><?= e(fecha_corta($cliente['fecha_nacimiento'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Sexo</th><td><?= e($cliente['sexo'] ?? '') ?: '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Estatura</th><td><?= $cliente['estatura_cm'] !== null ? e(numero_corto($cliente['estatura_cm'])) . ' cm' : '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Objetivo</th><td><?= nl2br(e($cliente['objetivo'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Condiciones de salud</th><td><?= nl2br(e($cliente['condiciones'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
-            <tr><th>Notas</th><td><?= nl2br(e($cliente['notas'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Teléfono</th><td><?= e($cliente['telefono']) ?></td></tr>
+            <tr><th scope="row">Ciudad</th><td><?= e($cliente['ciudad'] ?? '') ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Correo</th><td><?= e($cliente['correo'] ?? '') ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Fecha de nacimiento</th><td><?= e(fecha_corta($cliente['fecha_nacimiento'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Sexo</th><td><?= e($cliente['sexo'] ?? '') ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Estatura</th><td><?= $cliente['estatura_cm'] !== null ? e(numero_corto($cliente['estatura_cm'])) . ' cm' : '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Objetivo</th><td><?= nl2br(e($cliente['objetivo'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Condiciones de salud</th><td><?= nl2br(e($cliente['condiciones'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
+            <tr><th scope="row">Notas</th><td><?= nl2br(e($cliente['notas'] ?? '')) ?: '<span class="suave">—</span>' ?></td></tr>
             <tr>
-                <th>Consentimiento</th>
+                <th scope="row">Consentimiento</th>
                 <td>
                     <?php if (!empty($cliente['consentimiento_fecha'])): ?>
                         <span class="etiqueta etiqueta-ok">Autorizado</span>
@@ -244,12 +253,12 @@ require __DIR__ . '/includes/header.php';
         <a class="boton boton-sec" href="caso.php?nuevo=1&amp;cliente=<?= (int) $id ?>">Nuevo proceso</a>
     </div>
     <?php if (!$casos): ?>
-        <p class="suave">Este cliente todavía no tiene procesos.</p>
+        <p class="suave">Crea el primer proceso para hacer seguimiento al cliente.</p>
     <?php else: ?>
         <ul class="lista">
             <?php foreach ($casos as $caso): ?>
                 <li>
-                    <a href="caso.php?id=<?= (int) $caso['id'] ?>"><strong><?= e($caso['titulo']) ?></strong></a>
+                    <a class="boton boton-texto" href="caso.php?id=<?= (int) $caso['id'] ?>"><strong><?= e($caso['titulo']) ?></strong></a>
                     <span class="etiqueta <?= e($estados[$caso['estado']] ?? 'etiqueta') ?>"><?= e($caso['estado']) ?></span>
                     <div class="suave">
                         Inició el <?= e(fecha_corta($caso['fecha_inicio'])) ?>
@@ -270,12 +279,12 @@ require __DIR__ . '/includes/header.php';
         <a class="boton boton-sec" href="pedido.php?nuevo=1&amp;cliente=<?= (int) $id ?>">Nuevo pedido</a>
     </div>
     <?php if (!$pedidos): ?>
-        <p class="suave">Este cliente todavía no tiene pedidos.</p>
+        <p class="suave">Crea el primer pedido cuando el cliente haga una compra.</p>
     <?php else: ?>
         <ul class="lista">
             <?php foreach ($pedidos as $p): ?>
                 <li>
-                    <a href="pedido.php?id=<?= (int) $p['id'] ?>"><strong>Pedido #<?= (int) $p['id'] ?></strong></a>
+                    <a class="boton boton-texto" href="pedido.php?id=<?= (int) $p['id'] ?>"><strong>Pedido #<?= (int) $p['id'] ?></strong></a>
                     · <?= e(dinero($p['total'])) ?>
                     <span class="etiqueta"><?= e(PEDIDO_ESTADOS[$p['estado']] ?? $p['estado']) ?></span>
                     <span class="etiqueta <?= $p['estado_pago'] === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">
@@ -291,7 +300,7 @@ require __DIR__ . '/includes/header.php';
 <section class="tarjeta">
     <h2>Historial</h2>
     <?php if (!$eventos): ?>
-        <p class="suave">Todavía no hay movimientos en el historial.</p>
+        <p class="suave">Aquí verás los cambios y seguimientos que registres.</p>
     <?php else: ?>
         <ul class="lista">
             <?php foreach ($eventos as $evento): ?>

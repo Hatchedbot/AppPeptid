@@ -15,54 +15,60 @@ require __DIR__ . '/includes/header.php';
 <div class="encabezado">
     <div>
         <h1>Clientes</h1>
-        <p class="suave">Toca un nombre para ver su ficha y su historial.</p>
+        <p class="suave">Consulta las fichas y los procesos de tus clientes.</p>
     </div>
     <a class="boton" href="cliente.php?nuevo=1">Nuevo cliente</a>
 </div>
 
-<form method="get" action="clientes.php" class="tarjeta">
+<form method="get" action="clientes.php" class="tarjeta formulario">
+    <h2>Busca un cliente</h2>
     <div class="campo">
-        <label for="q">Buscar</label>
+        <label for="q">Nombre o teléfono</label>
         <div class="fila">
             <input type="search" id="q" name="q" value="<?= e($q) ?>"
-                   placeholder="Nombre o teléfono" autocomplete="off">
+                   autocomplete="off" enterkeyhint="search">
             <button type="submit" class="boton">Buscar</button>
         </div>
     </div>
     <?php if ($q !== ''): ?>
-        <p class="suave">Resultados para «<?= e($q) ?>». <a href="clientes.php">Ver todos</a></p>
+        <p class="suave">Resultados para «<?= e($q) ?>».</p>
+        <div><a class="boton boton-sec" href="clientes.php">Ver todos los clientes</a></div>
     <?php endif; ?>
 </form>
 
-<div class="tarjeta">
+<section class="tarjeta">
+    <h2>Lista de clientes</h2>
     <?php if (!$clientes): ?>
         <p class="suave">
             <?= $q !== ''
                 ? 'No encontramos clientes con «' . e($q) . '». Prueba con otro nombre o con el teléfono.'
-                : 'Todavía no hay clientes. Crea el primero con el botón «Nuevo cliente».' ?>
+                : 'Crea tu primer cliente para empezar el seguimiento.' ?>
         </p>
+        <?php if ($q === ''): ?>
+            <a class="boton boton-sec" href="cliente.php?nuevo=1">Crear el primer cliente</a>
+        <?php endif; ?>
     <?php else: ?>
         <table class="tabla tabla-movil">
             <thead>
                 <tr>
-                    <th>Nombre</th>
-                    <th>Teléfono</th>
-                    <th>Ciudad</th>
-                    <th>Casos activos</th>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Teléfono</th>
+                    <th scope="col">Ciudad</th>
+                    <th scope="col">Casos activos</th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ($clientes as $c): ?>
                 <tr>
-                    <td><a href="cliente.php?id=<?= (int) $c['id'] ?>"><strong><?= e($c['nombre']) ?></strong></a></td>
-                    <td><?= e($c['telefono']) ?></td>
-                    <td><?= e($c['ciudad'] ?? '') ?: '<span class="suave">—</span>' ?></td>
+                    <td><a class="boton boton-texto" href="cliente.php?id=<?= (int) $c['id'] ?>"><strong><?= e($c['nombre']) ?></strong></a></td>
+                    <td>Teléfono <?= e($c['telefono']) ?></td>
+                    <td>Ciudad <?= e($c['ciudad'] ?? '') ?: '<span class="suave">sin registrar</span>' ?></td>
                     <td>
                         <?php $n = (int) $c['casos_activos']; ?>
                         <?php if ($n > 0): ?>
-                            <span class="etiqueta etiqueta-ok"><?= $n ?></span>
+                            <span class="etiqueta etiqueta-ok"><?= $n ?> <?= $n === 1 ? 'caso activo' : 'casos activos' ?></span>
                         <?php else: ?>
-                            <span class="suave">0</span>
+                            <span class="etiqueta">Sin casos activos</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -71,5 +77,5 @@ require __DIR__ . '/includes/header.php';
         </table>
         <p class="suave"><?= count($clientes) ?> <?= count($clientes) === 1 ? 'cliente' : 'clientes' ?>.</p>
     <?php endif; ?>
-</div>
+</section>
 <?php require __DIR__ . '/includes/footer.php';
