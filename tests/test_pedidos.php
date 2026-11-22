@@ -75,6 +75,10 @@ prueba('pedido valida el cliente, el proceso, el catálogo y los enteros antes d
     pedido_debe_fallar(fn() => pedido_crear(['cliente_id' => $cliente], []), 'al menos un producto');
     pedido_debe_fallar(fn() => pedido_crear(['cliente_id' => $cliente], [['producto_id' => 0, 'cantidad' => 1]]), 'catálogo');
     pedido_debe_fallar(fn() => pedido_crear(['cliente_id' => $cliente], [['cantidad' => '1,5'] + $item]), 'cantidad');
+    foreach (['1D', '0', '-1', '1.000'] as $cantidad) {
+        pedido_debe_fallar(fn() => pedido_crear(['cliente_id' => $cliente], [['cantidad' => $cantidad] + $item]),
+            'Escribe un número entero de 1');
+    }
     pedido_debe_fallar(fn() => pedido_crear(['cliente_id' => $cliente, 'descuento' => 999999], [$item]), 'total');
     igual([], pedidos_listar(['cliente_id' => $cliente]));
     $id = pedido_crear(['cliente_id' => $cliente, 'caso_id' => $caso], [$item]);
@@ -184,6 +188,32 @@ prueba('contraentrega despacha sin pago y solo se entrega al completar el pago',
     pedido_cambiar_estado($id, 'entregado');
     verdadero(pedido_obtener($id)['entregado']);
     igual(2, inventario_stock_lote($lote));
+});
+
+prueba('envíos agrupa pedidos por pago, guía y estado, y permite buscar por cliente o guía', function () {
+    [$pagado] = crear_pedido_de_prueba(['cliente_id' => cliente_para_pedido('Cliente despacho ficticio')]);
+    [$pendiente] = crear_pedido_de_prueba(['cliente_id' => cliente_para_pedido('Cliente despacho pendiente')]);
+    [$contraentrega] = crear_pedido_de_prueba(['cliente_id' => cliente_para_pedido('Cliente despacho contraentrega'), 'contraentrega' => 1]);
+    $q = 'Cliente despacho';
+    foreach ([$pagado, $pendiente, $contraentrega] as $id) {
+        pedido_cambiar_estado($id, 'confirmado');
+    }
+    pago_agregar($pagado, ['metodo' => 'nequi', 'valor' => 125000]);
+    $ids = fn(array $pedidos) => array_map('intval', array_column($pedidos, 'id'));
+    igual([$contraentrega, $pagado], $ids(envios_sin_guia($q)));
+    igual([$pagado], $ids(envios_sin_guia('despacho ficticio')));
+    igual([$pendiente], $ids(envios_esperando_pago($q)));
+    igual([], envios_en_camino($q));
+    pago_agregar($pendiente, ['metodo' => 'nequi', 'valor' => 25000]);
+    [$pedido] = envios_esperando_pago($q);
+    igual(100000, (int) $pedido['total'] - (int) $pedido['pagado']);
+
+    pedido_cambiar_estado($pagado, 'despachado', ['transportadora' => 'Reparto ficticio', 'guia' => 'GUIA-ENVIO']);
+    igual([$contraentrega], $ids(envios_sin_guia($q)));
+    igual([$pagado], $ids(envios_en_camino('guia-envio')));
+    igual([], envios_en_camino('guia-inexistente'));
+    pedido_cambiar_estado($pagado, 'entregado');
+    igual([], envios_en_camino($q));
 });
 
 prueba('token público identifica solo el pedido y devuelve únicamente datos públicos', function () {

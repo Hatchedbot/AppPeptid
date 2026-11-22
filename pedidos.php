@@ -23,7 +23,10 @@ require __DIR__ . '/includes/header.php';
         <h1>Pedidos</h1>
         <p class="suave">Consulta tus pedidos, pagos y envíos.</p>
     </div>
-    <a class="boton" href="<?= e($url_nuevo) ?>">Nuevo pedido</a>
+    <div class="acciones-fila">
+        <a class="boton boton-sec" href="envios.php"><?= icono('camion') ?> Envíos</a>
+        <a class="boton" href="<?= e($url_nuevo) ?>">Nuevo pedido</a>
+    </div>
 </div>
 <form method="get" action="pedidos.php" class="tarjeta formulario">
     <h2>Filtrar pedidos</h2>
@@ -83,10 +86,10 @@ require __DIR__ . '/includes/header.php';
             <?php foreach ($pedidos as $pedido): ?>
                 <tr>
                     <td><a class="boton boton-sec" href="pedido.php?id=<?= e($pedido['id']) ?>">Pedido #<?= e($pedido['id']) ?> · <?= e($pedido['cliente']) ?></a></td>
-                    <td><span class="suave">Total</span> <?= e(dinero($pedido['total'])) ?></td>
+                    <td><span class="solo-movil">Total</span> <?= e(dinero($pedido['total'])) ?></td>
                     <td><span class="etiqueta <?= $pedido['estado'] === 'entregado' ? 'etiqueta-ok' : '' ?>"><?= e(PEDIDO_ESTADOS[$pedido['estado']]) ?></span></td>
                     <td><span class="etiqueta <?= $pedido['estado_pago'] === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$pedido['estado_pago']])) ?></span></td>
-                    <td><span class="suave">Fecha</span> <?= e(fecha_corta($pedido['creado'])) ?></td>
+                    <td><span class="solo-movil">Fecha</span> <?= e(fecha_corta($pedido['creado'])) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

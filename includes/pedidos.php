@@ -100,7 +100,12 @@ function pedido_preparar_items(array $items): array
         if (!$producto) {
             throw new InvalidArgumentException('Selecciona un producto del catálogo para cada ítem.');
         }
-        $cantidad = pedido_entero($item['cantidad'] ?? '', 'cantidad', 1);
+        $cantidad = $item['cantidad'] ?? '';
+        if ((!is_int($cantidad) && !is_string($cantidad)) || !preg_match('/^[0-9]+$/D', (string) $cantidad)
+            || $cantidad < 1 || $cantidad > 2147483647) {
+            throw new InvalidArgumentException('Revisa la cantidad de cada producto. Escribe un número entero de 1 a 2.147.483.647.');
+        }
+        $cantidad = (int) $cantidad;
         $precio = $item['precio_unitario'] ?? '';
         $precio = pedido_entero($precio === '' ? $producto['precio'] : $precio, 'precio unitario');
         $filas[] = [
@@ -234,6 +239,11 @@ function pedido_estado_pago(int $id): string
     return $pagado >= (int) $total ? 'pagado' : ($pagado > 0 ? 'parcial' : 'pendiente');
 }
 
+function pedido_pago_permite_despacho(array $pedido, int $pagado): bool
+{
+    return (bool) $pedido['contraentrega'] || $pagado >= (int) $pedido['total'];
+}
+
 function pedido_cambiar_estado(int $id, string $nuevo, array $datos = []): void
 {
     en_transaccion(function (PDO $pdo) use ($id, $nuevo, $datos): void {
@@ -251,7 +261,7 @@ function pedido_cambiar_estado(int $id, string $nuevo, array $datos = []): void
 
         $fecha = ahora();
         if ($nuevo === 'despachado') {
-            if (!$pedido['contraentrega'] && pedido_pagado($id) < (int) $pedido['total']) {
+            if (!pedido_pago_permite_despacho($pedido, pedido_pagado($id))) {
                 throw new InvalidArgumentException('Registra el pago completo o marca el pedido como contraentrega antes de despachar.');
             }
             $transportadora = pedido_texto($datos, 'transportadora', 80);
@@ -281,7 +291,7 @@ function pedido_cambiar_estado(int $id, string $nuevo, array $datos = []): void
 function pedidos_listar(array $filtros = []): array
 {
     $sql = "SELECT * FROM (
-                SELECT p.*, c.nombre AS cliente,
+                SELECT p.*, c.nombre AS cliente, COALESCE(a.pagado, 0) AS pagado,
                     CASE WHEN COALESCE(a.pagado, 0) >= p.total THEN 'pagado'
                          WHEN COALESCE(a.pagado, 0) > 0 THEN 'parcial' ELSE 'pendiente' END AS estado_pago
                 FROM pedidos p JOIN clientes c ON c.id = p.cliente_id
@@ -306,6 +316,29 @@ function pedidos_listar(array $filtros = []): array
         $sql .= ')';
     }
     return pedido_consulta($sql . ' ORDER BY creado DESC, id DESC', $params)->fetchAll();
+}
+
+function envios_confirmados(string $q, bool $listos): array
+{
+    return array_values(array_filter(pedidos_listar(['estado' => 'confirmado', 'q' => $q]),
+        fn(array $pedido) => trim($pedido['guia'] ?? '') === ''
+            && pedido_pago_permite_despacho($pedido, (int) $pedido['pagado']) === $listos));
+}
+
+function envios_sin_guia(string $q = ''): array
+{
+    return envios_confirmados($q, true);
+}
+
+function envios_esperando_pago(string $q = ''): array
+{
+    return envios_confirmados($q, false);
+}
+
+function envios_en_camino(string $q = ''): array
+{
+    return array_values(array_filter(pedidos_listar(['estado' => 'despachado', 'q' => $q]),
+        fn(array $pedido) => trim($pedido['guia'] ?? '') !== '' && trim($pedido['transportadora'] ?? '') !== ''));
 }
 
 function pedido_por_token(string $token): ?array

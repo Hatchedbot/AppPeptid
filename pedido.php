@@ -159,7 +159,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="fila">
                         <div class="campo">
                             <label for="cantidad-<?= e($i) ?>" data-campo="cantidad">Cantidad</label>
-                            <input type="text" id="cantidad-<?= e($i) ?>" name="items[<?= e($i) ?>][cantidad]"
+                            <input type="number" min="1" step="1" id="cantidad-<?= e($i) ?>" name="items[<?= e($i) ?>][cantidad]"
                                    data-campo="cantidad" inputmode="numeric" value="<?= e($item['cantidad'] ?? 1) ?>" required>
                         </div>
                         <div class="campo">
@@ -169,7 +169,7 @@ require __DIR__ . '/includes/header.php';
                             <span class="ayuda">Déjalo vacío para usar el precio del catálogo.</span>
                         </div>
                     </div>
-                    <div><button type="button" class="boton boton-peligro" data-quitar>Quitar producto</button></div>
+                    <div><button type="button" class="boton boton-quitar" data-quitar>Quitar producto</button></div>
                 </fieldset>
                 <?php if ($item === null): ?></template><?php endif; ?>
             <?php endforeach; ?>
@@ -250,8 +250,16 @@ require __DIR__ . '/includes/header.php';
 <?php else:
     $items = pedido_items($id);
     $pagos = pedido_pagos($id);
+    $total_pagado = (int) array_sum(array_column($pagos, 'valor'));
     $pendientes = PEDIDO_TRANSICIONES[$pedido['estado']] ?? [];
     $estado_pago = pedido_estado_pago($id);
+    $accion_principal = $pendientes[0] ?? null;
+    $pide_guia = $accion_principal === 'despachado';
+    $listo_para_enviar = $pide_guia && trim($pedido['guia'] ?? '') === ''
+        && pedido_pago_permite_despacho($pedido, $total_pagado);
+    $acciones = ['confirmado' => 'Confirmar pedido', 'despachado' => 'Despachar pedido',
+        'entregado' => 'Marcar como entregado', 'cancelado' => 'Cancelar pedido', 'devuelto' => 'Registrar devolución'];
+    $confirmaciones = ['cancelado' => '¿Cancelar este pedido?', 'devuelto' => '¿Registrar la devolución de este pedido?'];
     $enlace = url_base() . '/pedido_estado.php?t=' . rawurlencode($pedido['token']);
     $plantilla = $pedido['estado'] === 'despachado' ? plantilla_texto('Pedido despachado') : '';
     $whatsapp = '';
@@ -291,48 +299,79 @@ require __DIR__ . '/includes/header.php';
         <?php if ($pedido['direccion'] || $pedido['ciudad']): ?>
             <p><?= e(implode(' · ', array_filter([$pedido['direccion'], $pedido['ciudad']]))) ?></p>
         <?php endif; ?>
-        <?php if ($pedido['guia'] !== null): ?>
-            <p><?= e($pedido['transportadora']) ?> · Guía <?= e($pedido['guia']) ?></p>
+        <?php if ($pedido['transportadora'] || $pedido['guia']): ?>
+            <p><?= e(implode(' · ', array_filter([
+                $pedido['transportadora'],
+                $pedido['guia'] ? 'Guía ' . $pedido['guia'] : '',
+            ]))) ?></p>
         <?php endif; ?>
         <?php if ($pedido['notas'] !== null): ?>
             <p>Notas internas<br><?= nl2br(e($pedido['notas'])) ?></p>
         <?php endif; ?>
-        <div class="fila">
-            <a class="boton boton-sec" href="<?= e($enlace) ?>" target="_blank" rel="noopener noreferrer">Abrir enlace público</a>
+        <?php if ($accion_principal !== null): ?>
+            <form id="avanzar-pedido" method="post" autocomplete="off">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="estado">
+                <?php if ($pide_guia): ?>
+                    <div class="fila">
+                        <div class="campo">
+                            <label for="transportadora">Transportadora</label>
+                            <input type="text" id="transportadora" name="transportadora" maxlength="80" required value="<?= e($despacho['transportadora'] ?? '') ?>">
+                        </div>
+                        <div class="campo">
+                            <label for="guia">Número de guía</label>
+                            <input type="text" id="guia" name="guia" maxlength="80" required value="<?= e($despacho['guia'] ?? '') ?>">
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </form>
+        <?php endif; ?>
+        <div class="acciones-fila">
+            <?php if ($accion_principal !== null): ?>
+                <button class="boton" form="avanzar-pedido" name="estado" value="<?= e($accion_principal) ?>"><?= e($acciones[$accion_principal]) ?></button>
+            <?php endif; ?>
+            <?php if ($listo_para_enviar): ?>
+                <a class="boton boton-sec" href="envios.php">Ir a envíos</a>
+            <?php endif; ?>
+            <a id="enlace-publico" class="boton boton-sec" href="<?= e($enlace) ?>" target="_blank" rel="noopener noreferrer">
+                <?= icono('flecha') ?> Abrir enlace público
+            </a>
+            <div hidden id="copiar-enlace"><button type="button" class="boton boton-sec">Copiar enlace</button></div>
             <?php if ($whatsapp): ?>
                 <a class="boton boton-sec" href="<?= e($whatsapp) ?>" target="_blank" rel="noopener noreferrer">Avisar por WhatsApp</a>
             <?php endif; ?>
+            <?php foreach (array_intersect_key($confirmaciones, array_flip($pendientes)) as $paso => $confirmacion): ?>
+                <form method="post">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="estado">
+                    <button class="boton boton-quitar" name="estado" value="<?= e($paso) ?>" data-confirmar="<?= e($confirmacion) ?>"><?= e($acciones[$paso]) ?></button>
+                </form>
+            <?php endforeach; ?>
         </div>
-        <?php if ($pendientes): ?>
-            <?php $acciones = ['confirmado' => 'Confirmar pedido', 'cancelado' => 'Cancelar pedido',
-                'entregado' => 'Marcar como entregado', 'devuelto' => 'Registrar devolución', 'despachado' => 'Despachar pedido']; ?>
-            <div class="fila">
-                <?php foreach ($pendientes as $paso): ?>
-                    <form method="post" class="formulario" autocomplete="off"
-                        <?= $paso === 'cancelado' ? 'onsubmit="return confirm(\'¿Cancelar este pedido?\')"' : '' ?>>
-                        <?= campo_csrf() ?>
-                        <input type="hidden" name="accion" value="estado">
-                        <?php if ($paso === 'despachado'): ?>
-                            <div class="campo">
-                                <label for="transportadora">Transportadora</label>
-                                <input type="text" id="transportadora" name="transportadora" maxlength="80" required value="<?= e($despacho['transportadora'] ?? '') ?>">
-                            </div>
-                            <div class="campo">
-                                <label for="guia">Número de guía</label>
-                                <input type="text" id="guia" name="guia" maxlength="80" required value="<?= e($despacho['guia'] ?? '') ?>">
-                            </div>
-                        <?php endif; ?>
-                        <div><button class="boton <?= $paso === 'cancelado' ? 'boton-peligro' : ($paso === 'devuelto' ? 'boton-sec' : '') ?>"
-                                     name="estado" value="<?= e($paso) ?>"><?= e($acciones[$paso]) ?></button></div>
-                    </form>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+        <p id="estado-copia" class="suave" role="status" hidden></p>
+        <script>
+            (() => {
+                if (!navigator.clipboard?.writeText) return;
+                const enlace = document.querySelector('#enlace-publico');
+                const copiar = document.querySelector('#copiar-enlace');
+                const estado = document.querySelector('#estado-copia');
+                copiar.hidden = false;
+                copiar.querySelector('button').addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(enlace.href);
+                        estado.textContent = 'Copiaste el enlace.';
+                    } catch {
+                        estado.textContent = 'No se pudo copiar el enlace. Puedes abrirlo y copiarlo desde el navegador.';
+                    }
+                    estado.hidden = false;
+                });
+            })();
+        </script>
     </section>
     <section class="tarjeta">
-        <h2>Pagos</h2>
+        <h2 id="pagos">Pagos</h2>
         <p><span class="etiqueta <?= $estado_pago === 'pagado' ? 'etiqueta-ok' : 'etiqueta-alerta' ?>">Pago <?= e(mb_strtolower(PEDIDO_ESTADOS_PAGO[$estado_pago])) ?></span>
-            · Total registrado <?= e(dinero(array_sum(array_column($pagos, 'valor')))) ?></p>
+            · Total registrado <?= e(dinero($total_pagado)) ?></p>
         <?php if ($pagos): ?>
             <ul class="lista">
                 <?php foreach ($pagos as $registro): ?>
