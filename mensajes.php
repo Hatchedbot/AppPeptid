@@ -38,70 +38,95 @@ $titulo = 'Mensajes';
 $activo = 'mensajes';
 require __DIR__ . '/includes/header.php';
 ?>
-<h1>Mensajes</h1>
-<div class="fila">
-    <a class="boton" href="campana.php?nuevo=1">Nueva campaña</a>
-    <a class="boton boton-sec" href="campana.php?nuevo=1&amp;individual=1">Escribir a un cliente</a>
+<div class="encabezado">
+    <div>
+        <h1>Mensajes</h1>
+        <p class="suave">Crea plantillas y envía mensajes por WhatsApp.</p>
+    </div>
+    <div class="fila">
+        <a class="boton boton-sec" href="campana.php?nuevo=1&amp;individual=1">Escribir a un cliente</a>
+        <a class="boton" href="campana.php?nuevo=1">Nueva campaña</a>
+    </div>
 </div>
 
-<h2>Campañas anteriores</h2>
-<div class="tarjeta">
+<section class="tarjeta" aria-labelledby="campana-titulo">
+    <h2 id="campana-titulo">Campañas anteriores</h2>
     <?php if (!$campanas): ?>
-        <p class="suave">Todavía no hay campañas.</p>
+        <p class="suave">Todavía no hay campañas. Crea la primera para empezar.</p>
+        <a class="boton" href="campana.php?nuevo=1">Nueva campaña</a>
     <?php else: ?>
         <table class="tabla tabla-movil">
-            <thead><tr><th>Campaña</th><th>Fecha</th><th>Avance</th></tr></thead>
+            <thead>
+                <tr><th>Campaña</th><th>Fecha</th><th>Avance</th></tr>
+            </thead>
             <tbody>
             <?php foreach ($campanas as $campana): ?>
                 <tr>
                     <td>
-                        <a href="campana.php?id=<?= e($campana['id']) ?>"><?= e($campana['nombre']) ?></a>
+                        <a class="boton boton-sec" href="campana.php?id=<?= e($campana['id']) ?>"><?= e($campana['nombre']) ?></a>
                         <div class="suave"><?= e($campana['filtro']) ?></div>
                     </td>
-                    <td><?= e(fecha_corta($campana['creado'])) ?></td>
-                    <td><?= e($campana['enviados']) ?> enviados, <?= e($campana['pendientes']) ?> pendientes,
-                        <?= e($campana['omitidos']) ?> omitidos</td>
+                    <td><span class="suave">Fecha:</span> <?= e(fecha_corta($campana['creado'])) ?></td>
+                    <td><?= e($campana['enviados']) ?> enviados · <?= e($campana['pendientes']) ?> pendientes · <?= e($campana['omitidos']) ?> omitidos</td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
     <?php endif; ?>
-</div>
+</section>
 
-<h2>Plantillas</h2>
-<?php foreach ($plantillas as $fila): ?>
-    <article class="tarjeta">
-        <h3><?= e($fila['nombre']) ?></h3>
-        <p><?= nl2br(e($fila['texto'])) ?></p>
-        <p class="suave"><?= $fila['activa'] ? 'Activa' : 'Inactiva' ?></p>
-        <form method="post" class="formulario" action="mensajes.php">
-            <?= campo_csrf() ?>
-            <input type="hidden" name="id" value="<?= e($fila['id']) ?>">
-            <div class="fila">
-                <a class="boton boton-sec" href="mensajes.php?editar=<?= e($fila['id']) ?>#plantilla">Editar</a>
-                <button class="boton boton-sec" name="accion" value="<?= $fila['activa'] ? 'desactivar' : 'activar' ?>">
-                    <?= $fila['activa'] ? 'Desactivar' : 'Activar' ?>
-                </button>
-            </div>
-        </form>
-    </article>
-<?php endforeach; ?>
+<section class="tarjeta" aria-labelledby="plantillas-titulo">
+    <h2 id="plantillas-titulo">Plantillas</h2>
+    <?php if (!$plantillas): ?>
+        <p class="suave">Todavía no hay plantillas. Crea la primera más abajo.</p>
+        <a class="boton boton-sec" href="#plantilla">Ir al formulario de plantillas</a>
+    <?php else: ?>
+        <ul class="lista">
+            <?php foreach ($plantillas as $fila): ?>
+                <li>
+                    <strong><?= e($fila['nombre']) ?></strong>
+                    <?= $fila['activa']
+                        ? '<span class="etiqueta etiqueta-ok">Activa</span>'
+                        : '<span class="etiqueta etiqueta-alerta">Inactiva</span>' ?>
+                    <p><?= nl2br(e($fila['texto'])) ?></p>
+                    <form method="post" action="mensajes.php" class="formulario">
+                        <?= campo_csrf() ?>
+                        <input type="hidden" name="id" value="<?= e($fila['id']) ?>">
+                        <div class="fila">
+                            <a class="boton boton-sec" href="mensajes.php?editar=<?= e($fila['id']) ?>#plantilla"
+                               aria-label="Editar plantilla <?= e($fila['nombre']) ?>">Editar</a>
+                            <?php if ($fila['activa']): ?>
+                                <button type="submit" class="boton boton-peligro" name="accion" value="desactivar"
+                                        onclick="return confirm('¿Desactivar esta plantilla?');">Desactivar</button>
+                            <?php else: ?>
+                                <button type="submit" class="boton boton-sec" name="accion" value="activar">Activar</button>
+                            <?php endif; ?>
+                        </div>
+                    </form>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
 
-<form method="post" class="tarjeta formulario" action="mensajes.php" id="plantilla">
+<form method="post" class="tarjeta formulario" action="mensajes.php" id="plantilla" aria-labelledby="plantilla-titulo">
     <?= campo_csrf() ?>
     <input type="hidden" name="id" value="<?= e($plantilla['id'] ?? 0) ?>">
-    <h3><?= $plantilla ? 'Editar plantilla' : 'Nueva plantilla' ?></h3>
+    <h2 id="plantilla-titulo"><?= $plantilla ? 'Editar plantilla' : 'Nueva plantilla' ?></h2>
     <div class="campo">
         <label for="nombre">Nombre</label>
-        <input id="nombre" name="nombre" maxlength="80" required value="<?= e($plantilla['nombre'] ?? '') ?>">
+        <input type="text" id="nombre" name="nombre" maxlength="80" required autocomplete="off"
+               aria-describedby="ayuda-nombre" value="<?= e($plantilla['nombre'] ?? '') ?>">
+        <span class="ayuda" id="ayuda-nombre">Un nombre corto para identificarla.</span>
     </div>
     <div class="campo">
         <label for="texto">Texto</label>
-        <textarea id="texto" name="texto" rows="4" maxlength="4000" required><?= e($plantilla['texto'] ?? '') ?></textarea>
-        <small>Marcadores disponibles: {nombre}, {producto}, {guia}, {transportadora}, {total}, {enlace} y {fecha}.</small>
+        <textarea id="texto" name="texto" rows="4" maxlength="4000" required
+                  aria-describedby="ayuda-texto"><?= e($plantilla['texto'] ?? '') ?></textarea>
+        <span class="ayuda" id="ayuda-texto">Marcadores disponibles: {nombre}, {producto}, {guia}, {transportadora}, {total}, {enlace} y {fecha}.</span>
     </div>
     <div class="fila">
-        <button class="boton" name="accion" value="guardar">Guardar plantilla</button>
+        <button type="submit" class="boton" name="accion" value="guardar">Guardar plantilla</button>
         <?php if ($plantilla): ?><a class="boton boton-sec" href="mensajes.php#plantilla">Cancelar edición</a><?php endif; ?>
     </div>
 </form>
