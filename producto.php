@@ -117,7 +117,7 @@ require __DIR__ . '/includes/header.php';
                 ?>
                 <tr>
                     <td><strong><?= e($l['codigo']) ?></strong></td>
-                    <td><span class="suave">Vencimiento</span> <?= $venc !== null ? e(fecha_corta((string) $venc)) : 'Sin fecha' ?></td>
+                    <td><span class="solo-movil">Vencimiento</span> <?= $venc !== null ? e(fecha_corta((string) $venc)) : 'Sin fecha' ?></td>
                     <td><?= (int) $l['stock'] ?> unidades</td>
                     <td><span class="etiqueta <?= $clase ?>"><?= $texto ?></span></td>
                 </tr>
@@ -196,7 +196,7 @@ require __DIR__ . '/includes/header.php';
             <tbody>
             <?php foreach ($movimientos as $m): ?>
                 <tr>
-                    <td><span class="suave">Fecha</span> <?= e(fecha_corta((string) $m['fecha'])) ?></td>
+                    <td><span class="solo-movil">Fecha</span> <?= e(fecha_corta((string) $m['fecha'])) ?></td>
                     <td><span class="etiqueta"><?= e(TIPOS_MOVIMIENTO[$m['tipo']] ?? $m['tipo']) ?></span></td>
                     <td><?= (int) $m['cantidad'] > 0 ? '+' : '' ?><?= (int) $m['cantidad'] ?> unidades</td>
                     <td><span class="suave">Lote</span> <?= e($m['lote_codigo']) ?></td>
