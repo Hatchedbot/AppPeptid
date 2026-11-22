@@ -373,7 +373,7 @@ prueba('la búsqueda ignora términos de la IA y elimina aliases de todo el text
     unset($GLOBALS['IA_FALSA']);
 
     igual('clientes.php?q=Natalia', $resuelta['url']);
-    igual('Encontré a Natalia. Natalia tiene ficha.', $resuelta['respuesta']);
+    igual('Aquí tienes los resultados de búsqueda para «Natalia».', $resuelta['respuesta']);
     igual('clientes.php', $desconocida['url']);
     igual('No pude identificar a quién se refiere la respuesta. Escribe el nombre para buscarlo.', $desconocida['respuesta']);
 });

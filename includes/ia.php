@@ -338,7 +338,7 @@ function lia_navegacion(string $texto, array $personas): ?array
                 ? 'Encontré varias coincidencias. Elige el cliente en la búsqueda.'
                 : 'Revisa la búsqueda para encontrar al cliente.',
             'accion' => 'buscar',
-            'url' => lia_url_busqueda($termino),
+            'url' => lia_url_busqueda(lia_limpiar_busqueda($termino)),
         ];
     }
 
@@ -376,10 +376,13 @@ function lia_agenda(array &$aliases): array
     return $agenda;
 }
 
+function lia_limpiar_busqueda(string $termino): string
+{
+    return trim((string) preg_replace('/\bCliente[\s%+_-]*\d+\b/iu', '', rawurldecode($termino)));
+}
+
 function lia_url_busqueda(string $termino): string
 {
-    $termino = (string) preg_replace('/\bCliente[\s%+_-]*\d+\b/iu', '', rawurldecode($termino));
-    $termino = trim($termino);
     return $termino === '' ? 'clientes.php' : 'clientes.php?q=' . rawurlencode($termino);
 }
 
@@ -722,7 +725,11 @@ function lia_preparar_respuesta(array $datos, array $clientes, array $conAlias, 
 
         case 'buscar':
             preg_match('/\b(?:busca|buscar|b[uú]scame|encuentra)\s+(?:a\s+)?(.+)/iu', $texto, $pedido);
-            $url = lia_url_busqueda(trim($pedido[1] ?? '', " \t\n\r.?!"));
+            $termino = lia_limpiar_busqueda(trim($pedido[1] ?? '', " \t\n\r.?!"));
+            $url = lia_url_busqueda($termino);
+            if ($termino !== '') {
+                $respuesta = "Aquí tienes los resultados de búsqueda para «{$termino}».";
+            }
             break;
 
         case 'ir':
