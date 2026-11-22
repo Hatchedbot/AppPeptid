@@ -17,6 +17,16 @@ const PERMISOS = [
     'usuarios' => ['admin'],
 ];
 
+/** Nombre visible de cada permiso, para la pantalla de usuarios. «usuarios» es solo del administrador. */
+const PERMISOS_NOMBRES = [
+    'clientes'   => 'Clientes',
+    'casos'      => 'Procesos y planes',
+    'pedidos'    => 'Pedidos',
+    'inventario' => 'Inventario',
+    'mensajes'   => 'Mensajes y campañas',
+    'lia'        => 'Asistente Lía',
+];
+
 /* ---------- Configuración y utilidades ---------- */
 
 /** config('ia.limite_diario') lee $CONFIG['ia']['limite_diario']. */
@@ -145,7 +155,7 @@ function usuario_actual(): ?array
     if ($u === false) {
         $u = null;
         if (!empty($_SESSION['usuario_id'])) {
-            $st = db()->prepare('SELECT id, nombre, usuario, rol, activo FROM usuarios WHERE id = ?');
+            $st = db()->prepare('SELECT id, nombre, usuario, rol, activo, permisos_propios FROM usuarios WHERE id = ?');
             $st->execute([$_SESSION['usuario_id']]);
             $fila = $st->fetch();
             $u = ($fila && (int) $fila['activo'] === 1) ? $fila : null;
@@ -172,7 +182,22 @@ function puede(string $permiso): bool
     if (!$u) {
         return false;
     }
-    return $u['rol'] === 'admin' || in_array($u['rol'], PERMISOS[$permiso] ?? [], true);
+    if ($u['rol'] === 'admin') {
+        return true;
+    }
+    if ((int) ($u['permisos_propios'] ?? 0) === 1) {
+        // «usuarios» nunca se da por permiso propio: solo el administrador gestiona cuentas.
+        return $permiso !== 'usuarios' && in_array($permiso, permisos_de_usuario((int) $u['id']), true);
+    }
+    return in_array($u['rol'], PERMISOS[$permiso] ?? [], true);
+}
+
+/** Permisos propios guardados para un usuario (tabla usuario_permisos). */
+function permisos_de_usuario(int $usuario_id): array
+{
+    $st = db()->prepare('SELECT permiso FROM usuario_permisos WHERE usuario_id = ? ORDER BY permiso');
+    $st->execute([$usuario_id]);
+    return $st->fetchAll(PDO::FETCH_COLUMN);
 }
 
 function requerir_permiso(string $permiso): array
@@ -313,4 +338,37 @@ function plantilla_texto(string $nombre): string
 function primer_nombre(string $nombre): string
 {
     return explode(' ', trim($nombre))[0] ?? '';
+}
+
+/* ---------- Íconos ---------- */
+
+/** Trazos de los íconos de línea (estilo Lucide) que usa la app. */
+const ICONOS = [
+    'inicio'     => '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+    'clientes'   => '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+    'pedidos'    => '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+    'inventario' => '<path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+    'mensajes'   => '<path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z"/>',
+    'usuarios'   => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    'usuario'    => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    'calendario' => '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/>',
+    'camion'     => '<path d="M2 6h11v10H2z"/><path d="M13 9h4.5l3.5 3.5V16h-8"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+    'alerta'     => '<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5"/><path d="M12 17.5h.01"/>',
+    'mas'        => '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    'buscar'     => '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    'plan'       => '<path d="M7 3h10l3 3v15H4V3h3"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/>',
+    'peso'       => '<path d="M5 8h14l2 13H3L5 8Z"/><circle cx="12" cy="5" r="2"/>',
+    'llave'      => '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9"/><path d="m16 7 3 3"/>',
+    'flecha'     => '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+];
+
+/**
+ * Ícono decorativo en SVG: <?= icono('pedidos') ?>. Va junto a un texto, así que es aria-hidden.
+ * Para un botón que solo tiene ícono, ponle aria-label al botón.
+ */
+function icono(string $nombre, string $clase = 'icono'): string
+{
+    $trazos = ICONOS[$nombre] ?? ICONOS['flecha'];
+    return '<svg class="' . e($clase) . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
+        . ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' . $trazos . '</svg>';
 }

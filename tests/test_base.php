@@ -26,6 +26,20 @@ prueba('permisos por rol', function () {
     verdadero(puede('usuarios'));
 });
 
+prueba('permisos propios por usuario', function () {
+    $u = usuario_prueba('asesor');
+    db()->prepare('UPDATE usuarios SET permisos_propios = 1 WHERE id = ?')->execute([$u['id']]);
+    $GLOBALS['USUARIO_FORZADO']['permisos_propios'] = 1;
+    verdadero(!puede('clientes'), 'sin permisos propios no ve clientes');
+    $ins = db()->prepare('INSERT INTO usuario_permisos (usuario_id, permiso) VALUES (?, ?)');
+    $ins->execute([$u['id'], 'inventario']);
+    $ins->execute([$u['id'], 'usuarios']);
+    verdadero(puede('inventario'), 've inventario');
+    verdadero(!puede('pedidos'), 'no ve pedidos');
+    verdadero(!puede('usuarios'), 'usuarios nunca por permiso propio');
+    igual(['inventario', 'usuarios'], permisos_de_usuario((int) $u['id']));
+});
+
 prueba('números escritos por personas', function () {
     igual(85.5, numero_entrada('85,5'));
     igual(1250000.0, numero_entrada('1.250.000'));

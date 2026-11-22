@@ -15,15 +15,6 @@ $menu = [
     'mensajes'   => ['mensajes.php', 'Mensajes', 'mensajes'],
     'usuarios'   => ['usuarios.php', 'Usuarios', 'usuarios'],
 ];
-// Íconos de línea (estilo Lucide) para el menú. Son decorativos: el texto va al lado.
-$iconos = [
-    'inicio'     => '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
-    'clientes'   => '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6.5 6.5 0 0 1 3.5 6"/>',
-    'pedidos'    => '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
-    'inventario' => '<path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
-    'mensajes'   => '<path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z"/>',
-    'usuarios'   => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-];
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -75,7 +66,7 @@ $iconos = [
         <?php foreach ($menu as $clave => [$archivo, $texto, $permiso]): ?>
             <?php if (is_file(RAIZ . '/' . $archivo) && ($permiso === null || puede($permiso))): ?>
                 <a href="<?= e($archivo) ?>" aria-label="<?= e($texto) ?>" class="<?= $activo === $clave ? 'activo' : '' ?>"<?= $activo === $clave ? ' aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?= $iconos[$clave] ?></svg>
+                    <?= icono($clave, '') ?>
                     <span><?= e($texto) ?></span>
                 </a>
             <?php endif; ?>

@@ -434,3 +434,8 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
     #lia-raiz .lia-panel:not([hidden]) { transform: none; }
   }
 }
+
+/* Íconos junto a títulos (función icono() en includes/funciones.php) */
+.icono { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; color: var(--acento); }
+.titulo-icono { display: flex; align-items: center; gap: .5rem; }
+.titulo-icono .icono { width: 1.25em; height: 1.25em; }
