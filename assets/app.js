@@ -278,6 +278,37 @@
     });
   }
 
+  // Botón «Mostrar» en todos los campos de contraseña (entrada, instalación y usuarios).
+  var ojo = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var ojoTachado = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.5 6.6C3.7 8.4 2 12 2 12s3.5 7 10 7a10 10 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  function prepararVerClave(campo) {
+    if (campo.dataset.verClave) { return; }
+    campo.dataset.verClave = '1';
+    var caja = document.createElement('span');
+    caja.className = 'campo-clave';
+    campo.parentNode.insertBefore(caja, campo);
+    caja.appendChild(campo);
+    var boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'boton-ver-clave';
+    function pintar(visible) {
+      boton.innerHTML = (visible ? ojoTachado : ojo) + '<span>' + (visible ? 'Ocultar' : 'Mostrar') + '</span>';
+      boton.setAttribute('aria-label', visible ? 'Ocultar la contraseña' : 'Mostrar la contraseña');
+      boton.setAttribute('aria-pressed', visible ? 'true' : 'false');
+    }
+    pintar(false);
+    boton.addEventListener('click', function () {
+      var visible = campo.type === 'password';
+      campo.type = visible ? 'text' : 'password';
+      pintar(visible);
+      campo.focus();
+    });
+    // Al enviar el formulario se vuelve a ocultar, para que el navegador no la guarde como texto.
+    if (campo.form) { campo.form.addEventListener('submit', function () { campo.type = 'password'; }); }
+    caja.appendChild(boton);
+  }
+  document.querySelectorAll('input[type="password"]').forEach(prepararVerClave);
+
   // Botones con data-confirmar="¿Seguro?" piden confirmación antes de enviar.
   document.addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-confirmar]');
