@@ -34,7 +34,7 @@ if ($ver_controles) {
 if ($ver_pedidos) {
     require_once __DIR__ . '/includes/pedidos.php';
     $filtro_despacho = ['estado' => 'confirmado'];
-    $por_despachar = pedidos_listar($filtro_despacho);
+    $por_despachar = array_slice(pedidos_listar($filtro_despacho), 0, 5);
 }
 
 if ($ver_inventario) {
