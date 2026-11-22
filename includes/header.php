@@ -8,12 +8,21 @@ $u = usuario_actual();
 $titulo = $titulo ?? config('app.nombre');
 $activo = $activo ?? '';
 $menu = [
-    'inicio'   => ['index.php', 'Inicio', null],
-    'clientes' => ['clientes.php', 'Clientes', 'clientes'],
+    'inicio'     => ['index.php', 'Inicio', null],
+    'clientes'   => ['clientes.php', 'Clientes', 'clientes'],
     'pedidos'    => ['pedidos.php', 'Pedidos', 'pedidos'],
     'inventario' => ['inventario.php', 'Inventario', 'inventario'],
     'mensajes'   => ['mensajes.php', 'Mensajes', 'mensajes'],
-    'usuarios' => ['usuarios.php', 'Usuarios', 'usuarios'],
+    'usuarios'   => ['usuarios.php', 'Usuarios', 'usuarios'],
+];
+// Íconos de línea (estilo Lucide) para el menú. Son decorativos: el texto va al lado.
+$iconos = [
+    'inicio'     => '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+    'clientes'   => '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+    'pedidos'    => '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+    'inventario' => '<path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+    'mensajes'   => '<path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z"/>',
+    'usuarios'   => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
 ];
 ?><!doctype html>
 <html lang="es">
@@ -22,22 +31,33 @@ $menu = [
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf" content="<?= e(csrf_token()) ?>">
 <title><?= e($titulo) ?> · <?= e(config('app.nombre')) ?></title>
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/estilos.css?v=<?= @filemtime(RAIZ . '/assets/estilos.css') ?>">
 </head>
 <body>
 <?php if ($u): ?>
 <header class="barra">
-    <a class="marca" href="index.php"><span class="marca-punto"></span><?= e(config('app.nombre')) ?></a>
-    <nav class="menu">
+    <a class="marca" href="index.php"><span class="marca-punto" aria-hidden="true"></span><?= e(config('app.nombre')) ?></a>
+    <nav class="menu" aria-label="Menú principal">
         <?php foreach ($menu as $clave => [$archivo, $texto, $permiso]): ?>
             <?php if (is_file(RAIZ . '/' . $archivo) && ($permiso === null || puede($permiso))): ?>
-                <a href="<?= e($archivo) ?>" class="<?= $activo === $clave ? 'activo' : '' ?>"><?= e($texto) ?></a>
+                <a href="<?= e($archivo) ?>" class="<?= $activo === $clave ? 'activo' : '' ?>"<?= $activo === $clave ? ' aria-current="page"' : '' ?>>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?= $iconos[$clave] ?></svg>
+                    <span><?= e($texto) ?></span>
+                </a>
             <?php endif; ?>
         <?php endforeach; ?>
     </nav>
     <form method="post" action="logout.php" class="salir">
         <?= campo_csrf() ?>
-        <span class="quien"><?= e(primer_nombre($u['nombre'])) ?></span>
+        <?php $nombre_corto = primer_nombre($u['nombre']); ?>
+        <span class="quien">
+            <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($nombre_corto, 0, 1))) ?></span>
+            <span class="quien-nombre"><?= e($nombre_corto) ?></span>
+        </span>
         <button type="submit" class="boton-texto">Salir</button>
     </form>
 </header>

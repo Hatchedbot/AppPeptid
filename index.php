@@ -16,7 +16,7 @@ $titulo = 'Inicio';
 $activo = 'inicio';
 require __DIR__ . '/includes/header.php';
 ?>
-<div class="encabezado">
+<div class="encabezado portada">
     <div>
         <h1>Hola, <?= e(primer_nombre($u['nombre'])) ?></h1>
         <p class="suave"><?= e(fecha_corta(hoy())) ?></p>
@@ -26,7 +26,7 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </div>
 
-<div class="rejilla">
+<div class="rejilla rejilla-cifras">
     <div class="tarjeta"><div class="suave">Clientes activos</div><div class="cifra"><?= $clientes ?></div></div>
     <div class="tarjeta"><div class="suave">Procesos en curso</div><div class="cifra"><?= $casos ?></div></div>
     <div class="tarjeta"><div class="suave">Por contactar hoy</div><div class="cifra"><?= count($por_contactar) ?></div></div>
