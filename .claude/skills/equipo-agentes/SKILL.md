@@ -111,6 +111,7 @@ De seis lanzamientos de interfaz, solo Codex entregó a la primera. Antes de dar
 | Kilo | Se queda esperando «Permission required» en cada comando y nadie lo aprueba | No usarlo sin supervisión desde Orca hasta configurar sus permisos automáticos |
 | Kimi | «Your current subscription does not have access to Kimi Code»: la sesión está iniciada, pero la cuenta no tiene el plan de pago Kimi Code | Joan decidió prescindir de él y se desinstaló el 22 nov 2026 (programa, atajos, `~/.kimi-code` y su entrada en el instalador): cuesta desde USD 19/mes, no publica cuánto rinde y sus datos quedan bajo leyes de China. No lo propongas como relevo |
 | Codex (y cualquiera que pruebe en navegador) | Deja encendido el servidor de prueba (`php -S localhost:81xx`); Orca muestra la sesión «working» durante horas aunque ya terminó | En cada encargo: «apaga el servidor de prueba antes de terminar». Si pasa: lista `php.exe` con su línea de comando, apaga solo los puertos de los agentes y la sesión pasa a `done` |
+| Codex | Con «no dejes servidores corriendo» apagó también el servidor de la demo (`localhost:8080`), que no era suyo, y tumbó el link de Cloudflare | Decir siempre: «apaga solo los servidores que abras tú; NO toques el de `localhost:8080` (demo)». Si se cae: reiniciarlo separado de Claude con `Start-Process` |
 | OpenCode | «This request would exceed your available credits» a mitad de tarea, con cambios sin commit | Relevar conservando el diff; el relevo debe revisar lo heredado (Codex encontró un error que dejó OpenCode) |
 
 ## Caducidad
