@@ -374,6 +374,9 @@ prueba('Lía consulta y navega por un nombre único, con permisos y sin enviar d
         $pedido = lia_responder($usuario, 'llévame al pedido de nicolas', []);
         igual('pedido.php?id=' . $reciente, $pedido['url']);
         igual('Aquí tienes el pedido de Nicolás.', $pedido['respuesta']);
+        $nuevo = lia_responder($usuario, 'quiero registrar un pedido para nicolas', []);
+        igual('pedido.php?nuevo=1&cliente=' . $cliente['id'], $nuevo['url']);
+        igual('Listo, te abrí un pedido nuevo para Nicolás. Revisa y guarda.', $nuevo['respuesta']);
         igual('cliente.php?id=' . $cliente['id'], lia_responder($usuario, 'abre la ficha de nicolas', [])['url']);
         igual('pedidos.php?cliente_id=' . $cliente['id'], lia_responder($usuario, 'LLEVAME a los pedidos de NICOLÁS', [])['url']);
         igual('envios.php?q=Nicol%C3%A1s%20M%C3%BAnera%20Prado', lia_responder($usuario, 'enséñame envíos de Nicolás', [])['url']);
@@ -414,6 +417,70 @@ prueba('Lía consulta y navega por un nombre único, con permisos y sin enviar d
     } finally {
         unset($GLOBALS['IA_FALSA']);
         $GLOBALS['USUARIO_FORZADO'] = $usuario;
+    }
+});
+
+prueba('Lía abre secciones y formularios precargados sin consultar a la IA ni guardar', function () {
+    $usuario = usuario_prueba('admin');
+    $cliente = t3_crear_cliente('Nicolás Herrera Prueba', '3105559876');
+    $id = $cliente['id'];
+    $rutas = [
+        ['muéstrame a Nicolás Herrera', "cliente.php?id=$id", 'clientes'],
+        ['el cliente Nicolás Herrera', "cliente.php?id=$id", 'clientes'],
+        ['los pedidos de Nicolás Herrera', "pedidos.php?cliente_id=$id", 'pedidos'],
+        ['quiero registrar un pedido para nicolas herrera', "pedido.php?nuevo=1&cliente=$id", 'pedidos'],
+        ['nuevo pedido de Nicolás Herrera', "pedido.php?nuevo=1&cliente=$id", 'pedidos'],
+        ['ayúdame a hacer un pedido', 'pedido.php?nuevo=1', 'pedidos'],
+        ['nuevo proceso para Nicolás Herrera', "caso.php?nuevo=1&cliente=$id", 'casos'],
+        ['necesito crear un plan para Nicolas Herrera', "caso.php?nuevo=1&cliente=$id", 'casos'],
+        ['crear un cliente', 'cliente.php?nuevo=1', 'clientes'],
+        ['registrar un cliente nuevo', 'cliente.php?nuevo=1', 'clientes'],
+        ['¿Qué falta por enviar?', 'envios.php', 'pedidos'],
+        ['llévame a envíos', 'envios.php', 'pedidos'],
+        ['guias pendientes', 'envios.php', 'pedidos'],
+        ['registrar una entrada', 'inventario.php?q=#entrada', 'inventario'],
+        ['entrada de mercancía', 'inventario.php?q=#entrada', 'inventario'],
+        ['stock de BPC', 'inventario.php?q=BPC', 'inventario'],
+        ['nueva campaña', 'campana.php?nuevo=1', 'mensajes'],
+        ['mandar mensaje a todos', 'campana.php?nuevo=1', 'mensajes'],
+        ['escribirle a Nicolás Herrera', 'campana.php?nuevo=1&individual=1', 'mensajes'],
+        ['ir a inicio', 'index.php', null],
+        ['abre clientes', 'clientes.php', 'clientes'],
+        ['pedidos', 'pedidos.php', 'pedidos'],
+        ['inventario', 'inventario.php', 'inventario'],
+        ['mensajes', 'mensajes.php', 'mensajes'],
+        ['usuarios', 'usuarios.php', 'usuarios'],
+    ];
+    $cambios = db()->query('SELECT total_changes()')->fetchColumn();
+    $GLOBALS['IA_FALSA'] = function () {
+        throw new RuntimeException('La navegación no debe enviar datos a la IA.');
+    };
+    try {
+        foreach ($rutas as [$texto, $url, $permiso]) {
+            igual($url, lia_responder($usuario, $texto, [])['url'], $texto);
+        }
+        igual('clientes.php?q=Persona%20Inexistente',
+            lia_responder($usuario, 'nuevo pedido para Persona Inexistente', [])['url']);
+        t3_crear_cliente('Nicolás Suárez Prueba', '3105559877');
+        igual('clientes.php?q=nicolas',
+            lia_responder($usuario, 'quiero registrar un pedido para nicolas', [])['url']);
+        $GLOBALS['USUARIO_FORZADO']['rol'] = 'asesor';
+        $GLOBALS['USUARIO_FORZADO']['permisos_propios'] = 1;
+        foreach ($rutas as [$texto, $url, $permiso]) {
+            $resultado = lia_responder(usuario_actual(), $texto, []);
+            igual($permiso === null ? $url : '', $resultado['url'], $texto);
+            if ($permiso !== null) {
+                contiene('No tienes permiso', $resultado['respuesta'], $texto);
+            }
+        }
+        db()->prepare('INSERT INTO usuario_permisos (usuario_id, permiso) VALUES (?, ?)')
+            ->execute([$usuario['id'], 'pedidos']);
+        igual("pedido.php?nuevo=1&cliente=$id",
+            lia_responder(usuario_actual(), 'nuevo pedido de Nicolás Herrera', [])['url']);
+        igual('', lia_responder(usuario_actual(), 'nuevo pedido de nicolas', [])['url']);
+        igual($cambios + 2, db()->query('SELECT total_changes()')->fetchColumn());
+    } finally {
+        unset($GLOBALS['IA_FALSA']);
     }
 });
 
