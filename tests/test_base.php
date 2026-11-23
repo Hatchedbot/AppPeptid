@@ -71,3 +71,8 @@ prueba('plantillas: rellenar marcadores y leer la plantilla por nombre', functio
     contiene('{guia}', plantilla_texto('Pedido despachado'));
     igual('', plantilla_texto('No existe'));
 });
+
+prueba('las búsquedas ignoran tildes y mayúsculas también en SQLite', function () {
+    igual('nicolas munera', db()->query("SELECT LOWER('Nicolás MÚNERA')")->fetchColumn());
+    igual(1, (int) db()->query("SELECT LOWER('Julián Gómez') LIKE LOWER('%julian gomez%')")->fetchColumn());
+});

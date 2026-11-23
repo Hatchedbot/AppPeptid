@@ -30,6 +30,19 @@ function db(): PDO
     ]);
     if (es_sqlite($pdo)) {
         $pdo->exec('PRAGMA foreign_keys = ON');
+        // En MySQL (Hostinger) las búsquedas ya ignoran tildes y mayúsculas por la intercalación utf8mb4.
+        // SQLite no: «nicolas» no encontraba a «Nicolás». Se reemplaza LOWER() por una que también quita tildes,
+        // así LOWER(x) LIKE LOWER(?) se comporta igual en local, en la demo y en producción.
+        $pdo->sqliteCreateFunction('LOWER', static function ($texto) {
+            if ($texto === null) {
+                return null;
+            }
+            return strtr(mb_strtolower((string) $texto, 'UTF-8'), [
+                'á' => 'a', 'à' => 'a', 'ä' => 'a', 'â' => 'a', 'é' => 'e', 'è' => 'e', 'ë' => 'e', 'ê' => 'e',
+                'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'î' => 'i', 'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ô' => 'o',
+                'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'û' => 'u', 'ñ' => 'n',
+            ]);
+        }, 1, PDO::SQLITE_DETERMINISTIC);
     } else {
         $pdo->exec("SET NAMES utf8mb4");
         $pdo->exec("SET time_zone = '-05:00'");
