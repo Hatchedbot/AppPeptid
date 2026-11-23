@@ -514,8 +514,9 @@ prueba('la búsqueda ignora términos de la IA y elimina aliases de todo el text
 prueba('Lía resuelve las alertas de inventario sin IA y comprueba el permiso', function () {
     require_once dirname(__DIR__) . '/includes/inventario.php';
     db()->beginTransaction();
-    $GLOBALS['IA_FALSA'] = function () {
-        throw new RuntimeException('Una consulta de alertas no debe llamar a la IA.');
+    $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) {
+        $pregunta = explode("\n", $payload['messages'][1]['content'])[0];
+        throw new RuntimeException('Una consulta de alertas no debe llamar a la IA. ' . $pregunta);
     };
     try {
         t3_config_ia();
@@ -544,6 +545,27 @@ prueba('Lía resuelve las alertas de inventario sin IA y comprueba el permiso', 
         contiene('Pocas unidades (lote PRONTO, ' . fecha_corta($manana) . ')',
             lia_responder($usuario, '¿Hay lotes por vencer?', [])['respuesta']);
 
+        $escasez = ['¿Qué se está acabando?', '¿Qué se acaba?', '¿Qué tiene poco stock?', '¿Hay pocas existencias?'];
+        foreach ($escasez as $frase) {
+            igual([
+                'respuesta' => 'Productos agotados: Solo vencido. Productos con bajo stock: Pocas unidades (2).',
+                'accion' => 'ir', 'url' => 'inventario.php',
+            ], lia_responder($usuario, $frase, []), $frase);
+        }
+        $vencimiento = ['¿Qué lotes vencen pronto?', '¿Cuáles están próximos a vencer?', '¿Qué está a punto de vencer?'];
+        foreach ($vencimiento as $frase) {
+            igual([
+                'respuesta' => 'Lotes por vencer: Pocas unidades (lote PRONTO, ' . fecha_corta($manana) . ').',
+                'accion' => 'ir', 'url' => 'inventario.php',
+            ], lia_responder($usuario, $frase, []), $frase);
+        }
+        $porProducto = ['stock de Pocas unidades', 'existencias de Pocas unidades', '¿Hay stock para Pocas unidades?'];
+        foreach ($porProducto as $frase) {
+            igual('inventario.php?q=Pocas%20unidades', lia_responder($usuario, $frase, [])['url'], $frase);
+        }
+        igual('inventario.php', lia_responder($usuario, '¿Qué productos quedan?', [])['url']);
+        igual('inventario.php', lia_responder($usuario, '¿Qué queda?', [])['url']);
+
         $pregunta = '';
         $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$pregunta) {
             $pregunta = $payload['messages'][1]['content'];
@@ -560,7 +582,40 @@ prueba('Lía resuelve las alertas de inventario sin IA y comprueba el permiso', 
         $pregunta = '';
         igual(lia_acceso_denegado(), lia_responder(usuario_actual(), '¿Qué productos están agotados?', []));
         igual(lia_acceso_denegado(), lia_responder(usuario_actual(), $mixta, []));
+        foreach ([...$escasez, ...$vencimiento, ...$porProducto] as $frase) {
+            igual(lia_acceso_denegado(), lia_responder(usuario_actual(), $frase, []), $frase);
+        }
         igual('', $pregunta);
+    } finally {
+        unset($GLOBALS['IA_FALSA'], $_SESSION['lia_historial'], $_SESSION['lia_aliases']);
+        db()->rollBack();
+    }
+});
+
+prueba('Lía trata las preguntas sobre lo que le queda a un cliente como consultas de cliente', function () {
+    db()->beginTransaction();
+    try {
+        t3_config_ia();
+        usuario_prueba();
+        db()->exec('UPDATE clientes SET activo = 0');
+        t3_crear_cliente('Valeria Pardo', '3105559821');
+        t3_crear_cliente('Nicolás Gómez', '3105559822');
+        $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) {
+            $pregunta = $payload['messages'][1]['content'];
+            contiene('Cliente 1', $pregunta);
+            verdadero(!str_contains($pregunta, 'Resumen de inventario'));
+            return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Bien.'])];
+        };
+
+        foreach ([0, 1] as $permisosPropios) {
+            $GLOBALS['USUARIO_FORZADO']['permisos_propios'] = $permisosPropios;
+            igual($permisosPropios === 0, puede('inventario'));
+            foreach (['¿cuántas dosis le quedan a Valeria?', '¿le quedan días al plan de Nicolás?',
+                      '¿Ya no le quedan unidades a Valeria?', '¿no quedan dosis para Valeria?',
+                      '¿Hay stock asignado a Valeria?'] as $frase) {
+                igual('Bien.', lia_responder(usuario_actual(), $frase, [])['respuesta'], $frase);
+            }
+        }
     } finally {
         unset($GLOBALS['IA_FALSA'], $_SESSION['lia_historial'], $_SESSION['lia_aliases']);
         db()->rollBack();

@@ -259,9 +259,16 @@ function lia_responder(array $usuario, string $texto, array $historial): array
 {
     $texto = trim($texto);
     $normalizado = lia_normalizar($texto);
-    $categoriasInventario = lia_categorias_inventario($normalizado);
-    $consultaInventario = $categoriasInventario !== []
-        || preg_match('/\b(stock|existencias?|inventario|quedan?)\b/', $normalizado);
+    $personas = db()->query('SELECT id, nombre, telefono, correo, ciudad, activo FROM clientes ORDER BY id')->fetchAll();
+    $textoBusqueda = lia_limpiar_busqueda($texto);
+    $busqueda = lia_buscar_clientes($textoBusqueda, $personas);
+    $mencionaCliente = $busqueda['completos'] !== [] || $busqueda['parciales'] !== [];
+    $stock = preg_match('/\b(stock|existencias?)\b/', $normalizado);
+    $quedan = !$mencionaCliente && preg_match('/\bquedan?\b/', $normalizado);
+    $categoriasInventario = lia_categorias_inventario($normalizado, $quedan);
+    $productoStock = $stock && $categoriasInventario === [] ? lia_producto_mencionado($normalizado) : null;
+    $consultaInventario = $categoriasInventario !== [] || preg_match('/\binventario\b/', $normalizado)
+        || $productoStock !== null || (!$mencionaCliente && $stock) || $quedan;
     if ($consultaInventario && !puede('inventario')) {
         return lia_acceso_denegado();
     }
@@ -272,18 +279,16 @@ function lia_responder(array $usuario, string $texto, array $historial): array
     if ($categoriasInventario !== [] && !$mixta) {
         return lia_responder_inventario($categoriasInventario);
     }
-    $personas = db()->prepare('SELECT id, nombre, telefono, correo, ciudad, activo FROM clientes ORDER BY id');
-    $personas->execute();
-    $personas = $personas->fetchAll();
-    $navegacion = $mixta ? null : lia_navegacion($texto, $personas);
+    $navegacion = $mixta ? null : lia_navegacion($texto, $personas, $consultaInventario);
     if ($navegacion !== null) {
         return $navegacion;
     }
     if ($consultaInventario && !$mixta) {
+        if ($productoStock !== null) {
+            return lia_navegacion_stock($productoStock);
+        }
         return lia_responder_inventario($categoriasInventario);
     }
-    $textoBusqueda = lia_limpiar_busqueda($texto);
-    $busqueda = lia_buscar_clientes($textoBusqueda, $personas);
     $clientes = lia_clientes_mencionados($busqueda);
     if (!$mixta && $clientes === [] && count($busqueda['parciales']) > 1) {
         preg_match_all('/[\p{L}0-9]+/u', $textoBusqueda, $palabras);
@@ -355,12 +360,13 @@ function lia_responder(array $usuario, string $texto, array $historial): array
     return lia_preparar_respuesta($datos, $clientes, $conAlias, $texto);
 }
 
-function lia_categorias_inventario(string $normalizado): array
+function lia_categorias_inventario(string $normalizado, bool $quedan): array
 {
+    $escasez = 'se (?:esta acabando|acaba)|poc[oa]s? (?:stock|existencias?)';
     $patrones = [
-        'agotados' => '/\b(?:agotad\w*|sin (?:stock|existencias)|no quedan?)\b/',
-        'stock_bajo' => '/\b(?:baj[oa]s? (?:en |de )?(?:stock|existencias)|(?:stock|existencias) baj[oa]s?)\b/',
-        'por_vencer' => '/\bpor vencer\b/',
+        'agotados' => '/\b(?:agotad\w*|sin (?:stock|existencias)|' . $escasez . ($quedan ? '|no quedan?' : '') . ')\b/',
+        'stock_bajo' => '/\b(?:baj[oa]s? (?:en |de )?(?:stock|existencias)|(?:stock|existencias) baj[oa]s?|' . $escasez . ')\b/',
+        'por_vencer' => '/\b(?:por vencer|vencen? pronto|proxim[oa]s? a vencer|a punto de vencer)\b/',
         'vencidos' => '/\bvencid[oa]s?\b/',
     ];
     $categorias = [];
@@ -423,8 +429,26 @@ function lia_responder_inventario(array $categorias): array
     return ['respuesta' => implode(' ', $frases), 'accion' => 'ir', 'url' => 'inventario.php'];
 }
 
+function lia_producto_mencionado(string $normalizado): ?string
+{
+    $productos = db()->query('SELECT nombre FROM productos WHERE activo = 1 ORDER BY LENGTH(nombre) DESC, id');
+    foreach ($productos as $producto) {
+        $nombre = preg_quote(lia_normalizar($producto['nombre']), '/');
+        if ($nombre !== '' && preg_match('/(?<![a-z0-9])' . $nombre . '(?![a-z0-9])/', $normalizado)) {
+            return $producto['nombre'];
+        }
+    }
+    return null;
+}
+
+function lia_navegacion_stock(string $termino): array
+{
+    return ['respuesta' => 'Aquí tienes las existencias que coinciden.', 'accion' => 'ir',
+            'url' => 'inventario.php?q=' . rawurlencode($termino)];
+}
+
 /** Atiende solicitudes explícitas de navegación con los datos locales. */
-function lia_navegacion(string $texto, array $personas): ?array
+function lia_navegacion(string $texto, array $personas, bool $consultaInventario): ?array
 {
     $normalizado = lia_normalizar($texto);
     $inicio = '^\s*[¿¡]?\s*(?:(?:quiero|necesito|ayudame\s+a)\s+)?';
@@ -444,7 +468,7 @@ function lia_navegacion(string $texto, array $personas): ?array
         ['(?:escribirle|escribele|escribir)\s+a\s+(.+?)', 'mensajes', '', '', 'individual'],
         [$ver . $articulo . '(?:que falta por enviar|guias pendientes|envios?)', 'pedidos', 'envios.php', 'Aquí tienes los envíos.'],
         [$ver . $articulo . '(?:' . $crear . '\s+(?:una\s+)?entrada(?: de mercancia)?|(?:nueva )?entrada de mercancia)', 'inventario', 'inventario.php?q=#entrada', 'Te abrí la entrada de mercancía. Revisa y guarda.'],
-        [$ver . $articulo . 'stock de\s+(.+?)', 'inventario', '', '', 'stock'],
+        [$ver . $articulo . '(?:stock|existencias?) de\s+(.+?)', 'inventario', '', '', 'stock'],
         [$ver . $articulo . 'ficha de\s+(.+?)', 'clientes', '', '', 'cliente'],
         [$ver . $articulo . 'cliente(?: de)?\s+(.+?)', 'clientes', '', '', 'cliente'],
         [$ver . $articulo . 'pedidos de\s+(.+?)', 'pedidos', '', '', 'pedidos'],
@@ -460,6 +484,9 @@ function lia_navegacion(string $texto, array $personas): ?array
     $rutas[] = [$verbo . '\s+a\s+(?!(?:quien(?:es)?|cuantos?)\b)(.+?)', 'clientes', '', '', 'cliente'];
 
     foreach ($rutas as $ruta) {
+        if (($ruta[4] ?? '') === 'stock' && !$consultaInventario) {
+            continue;
+        }
         if (preg_match('/' . $inicio . $ruta[0] . $fin . '/uD', $normalizado, $pedido, PREG_OFFSET_CAPTURE)) {
             break;
         }
@@ -481,8 +508,7 @@ function lia_navegacion(string $texto, array $personas): ?array
     $termino = trim(mb_substr($texto, $inicioTermino, mb_strlen($captura, 'UTF-8'), 'UTF-8'));
     $destino = $ruta[4];
     if ($destino === 'stock') {
-        return ['respuesta' => 'Aquí tienes las existencias que coinciden.', 'accion' => 'ir',
-                'url' => 'inventario.php?q=' . rawurlencode($termino)];
+        return lia_navegacion_stock($termino);
     }
 
     $coincidencias = lia_buscar_clientes($termino, $personas);
