@@ -167,6 +167,19 @@ for (const [frase, destino] of [
   });
 }
 
+for (const frase of ['¿Qué productos están agotados?', 'hay productos con bajo stock?', 'qué se está acabando']) {
+  test(`Lía responde de inventario: «${frase}»`, async ({ page }) => {
+    await entrar(page);
+    await page.getByRole('button', { name: 'Abrir a Lía' }).click();
+    const campo = page.getByRole('textbox', { name: 'Escribe tu pregunta para Lía' });
+    await campo.fill(frase);
+    await campo.press('Enter');
+    const respuesta = page.locator('#lia-raiz .lia-msg.lia-lia').last();
+    await expect(respuesta).toHaveText(/agotad|bajo stock|No hay/i, { timeout: 15_000 });
+    await expect(respuesta).not.toHaveText(/No tengo/i);
+  });
+}
+
 test('pedidos: la búsqueda ignora tildes', async ({ page }) => {
   await entrar(page);
   await page.goto('/pedidos.php?q=nicolas');

@@ -536,7 +536,7 @@ prueba('Lía resuelve las alertas de inventario sin IA y comprueba el permiso', 
         inventario_entrada((int) db()->lastInsertId(), 'SUFICIENTE', null, 3);
         $producto->execute(['Producto inactivo', 'Prueba', 'Prueba', 0, 2]);
 
-        igual(['respuesta' => 'Productos agotados: Solo vencido.', 'accion' => 'ir', 'url' => 'inventario.php'],
+        igual(['respuesta' => 'Productos agotados: Solo vencido.', 'accion' => 'ninguna', 'url' => 'inventario.php'],
             lia_responder($usuario, '¿Qué productos están agotados?', []));
         igual('Productos con bajo stock: Pocas unidades (2).',
             lia_responder($usuario, '¿Hay productos con bajo stock?', [])['respuesta']);
@@ -549,14 +549,14 @@ prueba('Lía resuelve las alertas de inventario sin IA y comprueba el permiso', 
         foreach ($escasez as $frase) {
             igual([
                 'respuesta' => 'Productos agotados: Solo vencido. Productos con bajo stock: Pocas unidades (2).',
-                'accion' => 'ir', 'url' => 'inventario.php',
+                'accion' => 'ninguna', 'url' => 'inventario.php',
             ], lia_responder($usuario, $frase, []), $frase);
         }
         $vencimiento = ['¿Qué lotes vencen pronto?', '¿Cuáles están próximos a vencer?', '¿Qué está a punto de vencer?'];
         foreach ($vencimiento as $frase) {
             igual([
                 'respuesta' => 'Lotes por vencer: Pocas unidades (lote PRONTO, ' . fecha_corta($manana) . ').',
-                'accion' => 'ir', 'url' => 'inventario.php',
+                'accion' => 'ninguna', 'url' => 'inventario.php',
             ], lia_responder($usuario, $frase, []), $frase);
         }
         $porProducto = ['stock de Pocas unidades', 'existencias de Pocas unidades', '¿Hay stock para Pocas unidades?'];

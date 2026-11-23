@@ -426,7 +426,7 @@ function lia_responder_inventario(array $categorias): array
         $mas = $total - $mostrados;
         $frases[] = $etiqueta . ': ' . ($detalle === [] ? $total : implode(', ', $detalle) . ($mas ? " y $mas más" : '')) . '.';
     }
-    return ['respuesta' => implode(' ', $frases), 'accion' => 'ir', 'url' => 'inventario.php'];
+    return ['respuesta' => implode(' ', $frases), 'accion' => 'ninguna', 'url' => 'inventario.php'];
 }
 
 function lia_producto_mencionado(string $normalizado): ?string

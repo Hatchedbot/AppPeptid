@@ -252,6 +252,8 @@
     enlace.href = url;
     enlace.hidden = false;
     acciones.hidden = false;
+    // El botón quita espacio al chat: baja hasta el final para que la respuesta se lea completa.
+    mensajes.scrollTop = mensajes.scrollHeight;
   }
 
   function pintarEstado() {
