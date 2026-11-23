@@ -258,17 +258,34 @@ function ia_registrar(string $funcion, string $modelo, bool $ok, int $tokens_ent
 function lia_responder(array $usuario, string $texto, array $historial): array
 {
     $texto = trim($texto);
+    $normalizado = lia_normalizar($texto);
+    $categoriasInventario = lia_categorias_inventario($normalizado);
+    $consultaInventario = $categoriasInventario !== []
+        || preg_match('/\b(stock|existencias?|inventario|quedan?)\b/', $normalizado);
+    if ($consultaInventario && !puede('inventario')) {
+        return lia_acceso_denegado();
+    }
+    $mixta = $consultaInventario && preg_match(
+        '/\b(agenda|casos?|controles?|seguimientos?|atrasad[oa]s?|clientes?|pedidos?|envios?|guias?|mensajes?|campanas?|usuarios?|ventas?)\b/',
+        $normalizado
+    );
+    if ($categoriasInventario !== [] && !$mixta) {
+        return lia_responder_inventario($categoriasInventario);
+    }
     $personas = db()->prepare('SELECT id, nombre, telefono, correo, ciudad, activo FROM clientes ORDER BY id');
     $personas->execute();
     $personas = $personas->fetchAll();
-    $navegacion = lia_navegacion($texto, $personas);
+    $navegacion = $mixta ? null : lia_navegacion($texto, $personas);
     if ($navegacion !== null) {
         return $navegacion;
+    }
+    if ($consultaInventario && !$mixta) {
+        return lia_responder_inventario($categoriasInventario);
     }
     $textoBusqueda = lia_limpiar_busqueda($texto);
     $busqueda = lia_buscar_clientes($textoBusqueda, $personas);
     $clientes = lia_clientes_mencionados($busqueda);
-    if ($clientes === [] && count($busqueda['parciales']) > 1) {
+    if (!$mixta && $clientes === [] && count($busqueda['parciales']) > 1) {
         preg_match_all('/[\p{L}0-9]+/u', $textoBusqueda, $palabras);
         $comunes = array_filter(array_map('lia_normalizar', $palabras[0]), fn($palabra) => strlen($palabra) >= 3);
         foreach ($busqueda['parciales'] as $cliente) {
@@ -289,7 +306,9 @@ function lia_responder(array $usuario, string $texto, array $historial): array
     unset($cliente);
 
     $agenda = null;
-    if (preg_match('/\b(hoy|atrasad[oa]s?|vencid[oa]s?|pendientes?|esta semana|agenda)\b/', lia_normalizar($texto))) {
+    if (preg_match('/\b(hoy|atrasad[oa]s?|pendientes?|esta semana|agenda)\b/', $normalizado)
+        || (!in_array('vencidos', $categoriasInventario, true) && preg_match('/\bvencid[oa]s?\b/', $normalizado))
+        || ($mixta && preg_match('/\b(casos?|controles?|seguimientos?)\b/', $normalizado))) {
         $agenda = lia_agenda($aliases);
     }
 
@@ -304,6 +323,13 @@ function lia_responder(array $usuario, string $texto, array $historial): array
     $pregunta = "Pregunta del equipo: {$preguntaVisible}\n\n"
         . 'Resumen general (sin nombres): ' . json_encode($resumen, JSON_UNESCAPED_UNICODE) . "\n\n"
         . 'Clientes encontrados en la base local: ' . json_encode($contexto, JSON_UNESCAPED_UNICODE);
+    if ($mixta) {
+        $inventario = array_map(static function (array $filas): array {
+            $productos = array_values(array_unique(array_column($filas, 'nombre')));
+            return ['conteo' => count($filas), 'productos' => array_slice($productos, 0, 8)];
+        }, lia_alertas_inventario());
+        $pregunta .= "\n\nResumen de inventario: " . json_encode($inventario, JSON_UNESCAPED_UNICODE);
+    }
     if ($agenda !== null) {
         $pregunta .= "\n\nAgenda de casos activos para hoy y vencidos (máximo 10): "
             . json_encode($agenda, JSON_UNESCAPED_UNICODE);
@@ -327,6 +353,74 @@ function lia_responder(array $usuario, string $texto, array $historial): array
     ], -6);
     $conAlias = array_filter($personas, fn($persona) => isset($aliases[$persona['id']]));
     return lia_preparar_respuesta($datos, $clientes, $conAlias, $texto);
+}
+
+function lia_categorias_inventario(string $normalizado): array
+{
+    $patrones = [
+        'agotados' => '/\b(?:agotad\w*|sin (?:stock|existencias)|no quedan?)\b/',
+        'stock_bajo' => '/\b(?:baj[oa]s? (?:en |de )?(?:stock|existencias)|(?:stock|existencias) baj[oa]s?)\b/',
+        'por_vencer' => '/\bpor vencer\b/',
+        'vencidos' => '/\bvencid[oa]s?\b/',
+    ];
+    $categorias = [];
+    foreach ($patrones as $categoria => $patron) {
+        if ($categoria === 'vencidos' && !preg_match('/\b(productos?|lotes?|stock|inventario)\b/', $normalizado)) {
+            continue;
+        }
+        if (preg_match($patron, $normalizado)) {
+            $categorias[] = $categoria;
+        }
+    }
+    return $categorias;
+}
+
+function lia_alertas_inventario(): array
+{
+    require_once __DIR__ . '/inventario.php';
+    $alertas = inventario_alertas();
+    // inventario_alertas ya calcula el stock vigente con inventario_stock_producto.
+    return [
+        'agotados' => array_filter($alertas['stock_bajo'], fn($p) => $p['stock'] === 0),
+        'stock_bajo' => array_filter($alertas['stock_bajo'], fn($p) => $p['stock'] > 0),
+        'por_vencer' => $alertas['por_vencer'],
+        'vencidos' => $alertas['vencidos'],
+    ];
+}
+
+function lia_responder_inventario(array $categorias): array
+{
+    $alertas = lia_alertas_inventario();
+    $etiquetas = [
+        'agotados' => ['Productos agotados', 'No hay productos agotados.'],
+        'stock_bajo' => ['Productos con bajo stock', 'No hay productos con bajo stock.'],
+        'por_vencer' => ['Lotes por vencer', 'No hay lotes por vencer.'],
+        'vencidos' => ['Lotes vencidos', 'No hay lotes vencidos.'],
+    ];
+    $frases = [];
+    $disponibles = 8;
+    foreach ($categorias ?: array_keys($alertas) as $categoria) {
+        [$etiqueta, $sinAlertas] = $etiquetas[$categoria];
+        $filas = $alertas[$categoria];
+        $total = count($filas);
+        if ($total === 0) {
+            $frases[] = $sinAlertas;
+            continue;
+        }
+        $detalle = [];
+        foreach (array_slice($filas, 0, $disponibles) as $fila) {
+            $detalle[] = match ($categoria) {
+                'agotados' => $fila['nombre'],
+                'stock_bajo' => $fila['nombre'] . ' (' . $fila['stock'] . ')',
+                default => $fila['nombre'] . ' (lote ' . $fila['codigo'] . ', ' . fecha_corta($fila['vencimiento']) . ')',
+            };
+        }
+        $mostrados = count($detalle);
+        $disponibles -= $mostrados;
+        $mas = $total - $mostrados;
+        $frases[] = $etiqueta . ': ' . ($detalle === [] ? $total : implode(', ', $detalle) . ($mas ? " y $mas más" : '')) . '.';
+    }
+    return ['respuesta' => implode(' ', $frases), 'accion' => 'ir', 'url' => 'inventario.php'];
 }
 
 /** Atiende solicitudes explícitas de navegación con los datos locales. */

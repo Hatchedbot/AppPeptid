@@ -511,6 +511,62 @@ prueba('la búsqueda ignora términos de la IA y elimina aliases de todo el text
     igual('No pude identificar a quién se refiere la respuesta. Escribe el nombre para buscarlo.', $desconocida['respuesta']);
 });
 
+prueba('Lía resuelve las alertas de inventario sin IA y comprueba el permiso', function () {
+    require_once dirname(__DIR__) . '/includes/inventario.php';
+    db()->beginTransaction();
+    $GLOBALS['IA_FALSA'] = function () {
+        throw new RuntimeException('Una consulta de alertas no debe llamar a la IA.');
+    };
+    try {
+        t3_config_ia();
+        $usuario = usuario_prueba();
+        db()->exec('UPDATE productos SET activo = 0');
+        igual('No hay productos agotados.', lia_responder($usuario, '¿Qué productos están agotados?', [])['respuesta']);
+
+        $producto = db()->prepare('INSERT INTO productos (nombre, presentacion, categoria, activo, stock_minimo)
+                                   VALUES (?, ?, ?, ?, ?)');
+        $producto->execute(['Solo vencido', 'Prueba', 'Prueba', 1, 0]);
+        $ayer = date('Y-m-d', strtotime('-1 day'));
+        inventario_entrada((int) db()->lastInsertId(), 'VIEJO', $ayer, 10);
+        $producto->execute(['Pocas unidades', 'Prueba', 'Prueba', 1, 2]);
+        $manana = date('Y-m-d', strtotime('+1 day'));
+        inventario_entrada((int) db()->lastInsertId(), 'PRONTO', $manana, 2);
+        $producto->execute(['Stock suficiente', 'Prueba', 'Prueba', 1, 2]);
+        inventario_entrada((int) db()->lastInsertId(), 'SUFICIENTE', null, 3);
+        $producto->execute(['Producto inactivo', 'Prueba', 'Prueba', 0, 2]);
+
+        igual(['respuesta' => 'Productos agotados: Solo vencido.', 'accion' => 'ir', 'url' => 'inventario.php'],
+            lia_responder($usuario, '¿Qué productos están agotados?', []));
+        igual('Productos con bajo stock: Pocas unidades (2).',
+            lia_responder($usuario, '¿Hay productos con bajo stock?', [])['respuesta']);
+        contiene('Solo vencido (lote VIEJO, ' . fecha_corta($ayer) . ')',
+            lia_responder($usuario, '¿Hay productos vencidos?', [])['respuesta']);
+        contiene('Pocas unidades (lote PRONTO, ' . fecha_corta($manana) . ')',
+            lia_responder($usuario, '¿Hay lotes por vencer?', [])['respuesta']);
+
+        $pregunta = '';
+        $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$pregunta) {
+            $pregunta = $payload['messages'][1]['content'];
+            return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Consulta mixta.'])];
+        };
+        $mixta = '¿Qué productos están agotados y quién está atrasado?';
+        lia_responder($usuario, $mixta, []);
+        contiene('Agenda de casos activos', $pregunta);
+        contiene('Resumen de inventario: {"agotados":{"conteo":1,"productos":["Solo vencido"]}', $pregunta);
+        verdadero(!str_contains($pregunta, 'VIEJO'));
+        verdadero(!str_contains($pregunta, 'PRONTO'));
+
+        $GLOBALS['USUARIO_FORZADO']['permisos_propios'] = 1;
+        $pregunta = '';
+        igual(lia_acceso_denegado(), lia_responder(usuario_actual(), '¿Qué productos están agotados?', []));
+        igual(lia_acceso_denegado(), lia_responder(usuario_actual(), $mixta, []));
+        igual('', $pregunta);
+    } finally {
+        unset($GLOBALS['IA_FALSA'], $_SESSION['lia_historial'], $_SESSION['lia_aliases']);
+        db()->rollBack();
+    }
+});
+
 prueba('la agenda incluye solo diez casos activos de hoy o vencidos y protege datos personales', function () {
     db()->beginTransaction();
     try {
@@ -544,10 +600,12 @@ prueba('la agenda incluye solo diez casos activos de hoy o vencidos y protege da
         $atrasados = lia_responder($usuario, '¿Quién está atrasado?', $_SESSION['lia_historial']);
         $privada = '¿Hay pendientes? Leonor Salazar, 317 555 7654, persona@ejemplo.test, SANTA ROSA DE CABAL y Zipaquira.';
         lia_responder($usuario, $privada, $_SESSION['lia_historial']);
+        lia_responder($usuario, '¿Qué casos están vencidos?', []);
         unset($GLOBALS['IA_FALSA']);
 
-        igual(3, count($preguntas));
+        igual(4, count($preguntas));
         foreach ($preguntas as $pregunta) {
+            verdadero(!str_contains($pregunta, 'Resumen de inventario'));
             preg_match('/Agenda de casos activos para hoy y vencidos .*?: (\[.*\])/', $pregunta, $linea);
             $agenda = json_decode($linea[1] ?? 'null', true);
             igual(10, count($agenda ?? []));
