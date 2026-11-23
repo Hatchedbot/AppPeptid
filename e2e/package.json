@@ -1,0 +1,7 @@
+{
+  "name": "brdg-e2e",
+  "private": true,
+  "description": "Pruebas de punta a punta de BRDG Seguimiento con Playwright (Chrome y WebKit de iPhone).",
+  "scripts": { "test": "playwright test" },
+  "devDependencies": { "@playwright/test": "1.65.0" }
+}
