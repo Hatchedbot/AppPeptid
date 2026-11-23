@@ -171,3 +171,25 @@ test('pedidos: la búsqueda ignora tildes', async ({ page }) => {
   await page.goto('/pedidos.php?q=nicolas');
   await expect(page.locator('table.tabla tbody tr').first()).toContainText('Nicolás');
 });
+
+test('la burbuja de Lía se arrastra, se pega al borde y un toque la abre', async ({ page }) => {
+  await entrar(page);
+  const burbuja = page.getByRole('button', { name: 'Abrir a Lía' });
+  await expect(burbuja).toBeVisible();
+  const caja = await burbuja.boundingBox();
+  const ancho = page.viewportSize().width;
+  // Arrastrar hacia la izquierda y un poco hacia arriba
+  await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(ancho * 0.35, caja.y - 120, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  const despues = await burbuja.boundingBox();
+  expect(despues.x, 'se pegó al borde izquierdo').toBeLessThan(40);
+  expect(despues.y).toBeLessThan(caja.y);
+  // Arrastrar no la abre
+  await expect(page.getByRole('textbox', { name: 'Escribe tu pregunta para Lía' })).toBeHidden();
+  // Un toque sí
+  await burbuja.click();
+  await expect(page.getByRole('textbox', { name: 'Escribe tu pregunta para Lía' })).toBeVisible();
+});

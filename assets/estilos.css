@@ -368,6 +368,12 @@ details[open] > summary.boton::after { transform: rotate(-135deg); margin-top: 4
   #lia-raiz .lia-panel:not([hidden]) { opacity: 0; transform: scale(.96); }
 }
 #lia-raiz .lia-cabeza, #lia-raiz .lia-form, #lia-raiz .lia-pie { background: transparent; }
+/* El panel de Lía es una hoja para leer y escribir: vidrio más denso que la barra, para que el texto
+   de la pantalla de atrás no se lea a través de la cabecera ni del campo de escribir. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  #lia-raiz .lia-panel { background: var(--lg-fondo), var(--superficie-2);
+    -webkit-backdrop-filter: blur(34px) saturate(1.6); backdrop-filter: blur(34px) saturate(1.6); }
+}
 #lia-raiz .lia-mensajes, #lia-raiz .lia-acciones { background: var(--lia-mensajes); }
 
 @media (width > 768px) {
