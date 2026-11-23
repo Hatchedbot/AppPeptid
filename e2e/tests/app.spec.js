@@ -154,6 +154,7 @@ for (const [frase, destino] of [
   ['llevame al pedido de nicolas', /pedido\.php\?id=\d+/],
   ['abre la ficha de julian', /cliente\.php\?id=\d+/],
   ['muestrame los envios de nicolas', /envios\.php/],
+  ['quiero registrar un pedido para nicolas', /pedido\.php\?nuevo=1&cliente=\d+/],
 ]) {
   test(`Lía: «${frase}» lleva a la pantalla`, async ({ page }) => {
     test.slow();
