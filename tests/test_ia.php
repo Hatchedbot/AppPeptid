@@ -318,7 +318,7 @@ prueba('Lía reconoce al cliente con solo nombre y apellido', function () {
     $r = lia_buscar_clientes('como va mariana ortiz con su proceso');
     igual(['Mariana Ortiz Valencia'], array_column($r['completos'], 'nombre'));
     $r = lia_buscar_clientes('como va mariana');
-    igual([], array_column($r['completos'], 'nombre'), 'solo el nombre no basta');
+    igual([], array_column($r['completos'], 'nombre'), 'solo el nombre sigue siendo una coincidencia parcial');
 });
 
 prueba('la ficha y el proceso se abren con datos locales sin esperar a la IA', function () {
@@ -349,6 +349,72 @@ prueba('la ficha y el proceso se abren con datos locales sin esperar a la IA', f
     igual('buscar', $ambiguo['accion']);
     igual('clientes.php?q=Salom%C3%A9', $ambiguo['url']);
     igual(0, $llamadas);
+});
+
+prueba('Lía consulta y navega por un nombre único, con permisos y sin enviar datos personales', function () {
+    t3_config_ia();
+    t3_limpiar_uso();
+    $usuario = usuario_prueba('admin');
+    $cliente = t3_crear_cliente('Nicolás Múnera Prado', '3009871145', 'Medellín');
+    $caso = t3_crear_caso($cliente['id'], 'Proceso de Nicolás');
+    t3_crear_caso($cliente['id'], 'Proceso cerrado', 'cerrado');
+    $otro = t3_crear_cliente('Alicia Pardo', '3009871146');
+    $insertar = db()->prepare('INSERT INTO pedidos (cliente_id, token, creado, actualizado) VALUES (?, ?, ?, ?)');
+    $insertar->execute([$cliente['id'], token_aleatorio(12), '2026-10-03 10:00:00', ahora()]);
+    $reciente = (int) db()->lastInsertId();
+    $insertar->execute([$cliente['id'], token_aleatorio(12), '2026-10-02 10:00:00', ahora()]);
+    $insertar->execute([$otro['id'], token_aleatorio(12), '2026-10-04 10:00:00', ahora()]);
+
+    $enviados = [];
+    $GLOBALS['IA_FALSA'] = function ($proveedor, $modelo, $payload) use (&$enviados) {
+        $enviados[] = $payload['messages'][1]['content'];
+        return ['ok' => true, 'codigo' => 200, 'contenido' => t3_json(['respuesta' => 'Cliente 1 va bien.'])];
+    };
+    try {
+        $pedido = lia_responder($usuario, 'llévame al pedido de nicolas', []);
+        igual('pedido.php?id=' . $reciente, $pedido['url']);
+        igual('Aquí tienes el pedido de Nicolás.', $pedido['respuesta']);
+        igual('cliente.php?id=' . $cliente['id'], lia_responder($usuario, 'abre la ficha de nicolas', [])['url']);
+        igual('pedidos.php?cliente_id=' . $cliente['id'], lia_responder($usuario, 'LLEVAME a los pedidos de NICOLÁS', [])['url']);
+        igual('envios.php?q=Nicol%C3%A1s%20M%C3%BAnera%20Prado', lia_responder($usuario, 'enséñame envíos de Nicolás', [])['url']);
+        igual('caso.php?id=' . $caso, lia_responder($usuario, 'quiero ver el plan de nicolas', [])['url']);
+        igual(0, count($enviados));
+
+        igual('Nicolás va bien.', lia_responder($usuario, '¿cómo va nicolas?', [])['respuesta']);
+        igual(1, count($enviados));
+        contiene('¿cómo va Cliente 1?', $enviados[0]);
+        contiene('"alias":"Cliente 1"', $enviados[0]);
+        foreach (['nicolas', 'Nicolás', 'Múnera', 'Prado', $cliente['telefono'], $cliente['correo'], 'Medellín'] as $privado) {
+            verdadero(!str_contains($enviados[0], $privado), 'el payload no debe incluir ' . $privado);
+        }
+
+        $homonimo = t3_crear_cliente('Nicolás', '3009871147');
+        foreach (['llévame al pedido de nicolas', '¿cómo va nicolas?'] as $texto) {
+            $ambiguo = lia_responder($usuario, $texto, []);
+            igual('buscar', $ambiguo['accion']);
+            igual('clientes.php?q=nicolas', $ambiguo['url']);
+            contiene('varias coincidencias', $ambiguo['respuesta']);
+        }
+        $sinPedido = lia_responder($usuario, 'abre el pedido de Nicolás Múnera Prado', []);
+        igual('pedido.php?id=' . $reciente, $sinPedido['url']);
+        db()->prepare('UPDATE clientes SET activo = 0 WHERE id = ?')->execute([$cliente['id']]);
+        $sinPedido = lia_responder($usuario, 'abre el pedido de Nicolás', []);
+        igual('', $sinPedido['url']);
+        contiene('no tiene pedidos', $sinPedido['respuesta']);
+        db()->prepare('UPDATE clientes SET activo = 0 WHERE id = ?')->execute([$homonimo['id']]);
+
+        $GLOBALS['USUARIO_FORZADO']['permisos_propios'] = 1;
+        $GLOBALS['USUARIO_FORZADO']['rol'] = 'asesor';
+        foreach (['pedido', 'pedidos', 'envíos'] as $destino) {
+            $restringido = lia_responder(usuario_actual(), "abre $destino de Alicia", []);
+            igual('', $restringido['url']);
+            contiene('No tienes permiso', $restringido['respuesta']);
+        }
+        igual(1, count($enviados));
+    } finally {
+        unset($GLOBALS['IA_FALSA']);
+        $GLOBALS['USUARIO_FORZADO'] = $usuario;
+    }
 });
 
 prueba('la búsqueda ignora términos de la IA y elimina aliases de todo el texto visible', function () {

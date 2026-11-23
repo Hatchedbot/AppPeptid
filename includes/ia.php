@@ -265,18 +265,28 @@ function lia_responder(array $usuario, string $texto, array $historial): array
     if ($navegacion !== null) {
         return $navegacion;
     }
+    $textoBusqueda = lia_limpiar_busqueda($texto);
+    $busqueda = lia_buscar_clientes($textoBusqueda, $personas);
+    $clientes = lia_clientes_mencionados($busqueda);
+    if ($clientes === [] && count($busqueda['parciales']) > 1) {
+        preg_match_all('/[\p{L}0-9]+/u', $textoBusqueda, $palabras);
+        $comunes = array_filter(array_map('lia_normalizar', $palabras[0]), fn($palabra) => strlen($palabra) >= 3);
+        foreach ($busqueda['parciales'] as $cliente) {
+            preg_match_all('/[a-z0-9]+/', lia_normalizar($cliente['nombre']), $nombre);
+            $comunes = array_intersect($comunes, $nombre[0]);
+        }
+        $indice = array_key_first($comunes);
+        return lia_resultado_busqueda($indice === null ? '' : $palabras[0][$indice], true);
+    }
     if (!ia_disponible()) {
         return ['respuesta' => 'La asistente no está configurada todavía.', 'accion' => 'ninguna', 'url' => ''];
     }
 
-    $busqueda = lia_buscar_clientes($texto, $personas);
     $aliases = $historial === [] ? [] : ($_SESSION['lia_aliases'] ?? []);
-    $mencionados = array_merge($busqueda['completos'], $busqueda['parciales']);
-    foreach ($mencionados as &$cliente) {
+    foreach ($clientes as &$cliente) {
         $cliente['alias'] = $aliases[$cliente['id']] ??= 'Cliente ' . (count($aliases) + 1);
     }
     unset($cliente);
-    $clientes = array_slice($mencionados, 0, min(5, count($busqueda['completos'])));
 
     $agenda = null;
     if (preg_match('/\b(hoy|atrasad[oa]s?|vencid[oa]s?|pendientes?|esta semana|agenda)\b/', lia_normalizar($texto))) {
@@ -322,42 +332,73 @@ function lia_responder(array $usuario, string $texto, array $historial): array
 /** Atiende solicitudes explícitas de navegación con los datos locales. */
 function lia_navegacion(string $texto, array $personas): ?array
 {
-    $patron = '/\b(?:abre|abrir|ver|ve|ir|mu[eé]strame|muestra)\s+(?:a\s+)?(?:la|el|al)\s+'
-        . '(ficha|proceso|caso)\s+de\s+(.+)/iu';
-    if (!preg_match($patron, $texto, $pedido)) {
+    $patron = '/\b(?:llevame|lleva|llevar|ir|ve|abre|abrir|ver|muestrame|muestra|quiero\s+ver|ensename)\s+'
+        . '(?:a\s+)?(?:(?:al|el|la|los|las|mis)\s+)?(ficha|cliente|proceso|caso|plan|pedidos?|envios?)\s+de\s+(?=\S)/u';
+    $normalizado = lia_normalizar($texto);
+    if (!preg_match($patron, $normalizado, $pedido, PREG_OFFSET_CAPTURE)) {
         return null;
     }
 
-    $termino = trim($pedido[2], " \t\n\r.?!");
+    $destino = $pedido[1][0];
+    if (in_array($destino, ['pedido', 'pedidos', 'envio', 'envios'], true) && !puede('pedidos')) {
+        return ['respuesta' => 'No tienes permiso para consultar pedidos o envíos.', 'accion' => 'ninguna', 'url' => ''];
+    }
+
+    $longitud = mb_strlen(substr($normalizado, 0, $pedido[0][1] + strlen($pedido[0][0])), 'UTF-8');
+    $termino = trim(mb_substr($texto, $longitud, null, 'UTF-8'), " \t\n\r.?!");
     $termino = (string) preg_replace('/,?\s+por favor$/iu', '', $termino);
     $coincidencias = lia_buscar_clientes($termino, $personas);
     $candidatos = $coincidencias['completos'] ?: $coincidencias['parciales'];
     if (count($candidatos) !== 1) {
-        return [
-            'respuesta' => count($candidatos) > 1
-                ? 'Encontré varias coincidencias. Elige el cliente en la búsqueda.'
-                : 'Revisa la búsqueda para encontrar al cliente.',
-            'accion' => 'buscar',
-            'url' => lia_url_busqueda(lia_limpiar_busqueda($termino)),
-        ];
+        return lia_resultado_busqueda($termino, count($candidatos) > 1);
     }
 
     $cliente = $candidatos[0];
     $nombre = primer_nombre($cliente['nombre']);
-    if (mb_strtolower($pedido[1]) !== 'ficha') {
-        $st = db()->prepare("SELECT id FROM casos WHERE cliente_id = ?
-                            ORDER BY CASE WHEN estado = 'activo' THEN 0 ELSE 1 END, fecha_inicio DESC, id DESC LIMIT 1");
-        $st->execute([$cliente['id']]);
+    $clienteId = (int) $cliente['id'];
+    if ($destino === 'pedido') {
+        $st = db()->prepare('SELECT id FROM pedidos WHERE cliente_id = ? ORDER BY creado DESC, id DESC LIMIT 1');
+        $st->execute([$clienteId]);
+        $id = $st->fetchColumn();
+        if ($id === false) {
+            return ['respuesta' => "$nombre aún no tiene pedidos registrados.", 'accion' => 'ninguna', 'url' => ''];
+        }
+        return ['respuesta' => "Aquí tienes el pedido de $nombre.", 'accion' => 'ir',
+                'url' => 'pedido.php?id=' . (int) $id];
+    }
+    if ($destino === 'pedidos') {
+        return ['respuesta' => "Aquí tienes los pedidos de $nombre.", 'accion' => 'ir',
+                'url' => 'pedidos.php?cliente_id=' . $clienteId];
+    }
+    if (in_array($destino, ['envio', 'envios'], true)) {
+        return ['respuesta' => "Aquí tienes los envíos de $nombre.", 'accion' => 'ir',
+                'url' => 'envios.php?q=' . rawurlencode($cliente['nombre'])];
+    }
+    if (in_array($destino, ['proceso', 'caso', 'plan'], true)) {
+        $st = db()->prepare("SELECT id FROM casos WHERE cliente_id = ? AND estado = 'activo'
+                            ORDER BY fecha_inicio DESC, id DESC LIMIT 1");
+        $st->execute([$clienteId]);
         $caso = $st->fetchColumn();
         if ($caso !== false) {
             return ['respuesta' => "Aquí tienes el proceso de $nombre.", 'accion' => 'abrir_caso',
                     'url' => 'caso.php?id=' . (int) $caso];
         }
-        return ['respuesta' => "$nombre aún no tiene procesos registrados.", 'accion' => 'ninguna', 'url' => ''];
+        return ['respuesta' => "$nombre no tiene un proceso activo.", 'accion' => 'ninguna', 'url' => ''];
     }
 
     return ['respuesta' => "Aquí tienes la ficha de $nombre.", 'accion' => 'abrir_cliente',
-            'url' => 'cliente.php?id=' . (int) $cliente['id']];
+            'url' => 'cliente.php?id=' . $clienteId];
+}
+
+function lia_resultado_busqueda(string $termino, bool $ambiguo): array
+{
+    return [
+        'respuesta' => $ambiguo
+            ? 'Encontré varias coincidencias. Elige el cliente en la búsqueda.'
+            : 'Revisa la búsqueda para encontrar al cliente.',
+        'accion' => 'buscar',
+        'url' => lia_url_busqueda(lia_limpiar_busqueda($termino)),
+    ];
 }
 
 function lia_agenda(array &$aliases): array
@@ -425,9 +466,12 @@ function lia_esquema(): array
  * Clientes activos cuyo nombre y apellido aparecen en el texto.
  * Compara palabras de 3 o más letras, sin tildes y en minúsculas.
  */
-function lia_clientes_mencionados(string $texto): array
+function lia_clientes_mencionados(array $busqueda): array
 {
-    return array_slice(lia_buscar_clientes($texto)['completos'], 0, 5);
+    if ($busqueda['completos'] !== []) {
+        return array_slice($busqueda['completos'], 0, 5);
+    }
+    return count($busqueda['parciales']) === 1 ? $busqueda['parciales'] : [];
 }
 
 /**
@@ -471,13 +515,13 @@ function lia_buscar_clientes(string $texto, ?array $personas = null): array
             continue;
         }
         $coinciden = 0;
-        foreach ($suyas as $palabra) {
+        foreach (array_unique($suyas) as $palabra) {
             if (isset($palabras[$palabra])) {
                 $coinciden++;
             }
         }
         // Basta con nombre y apellido: "Julián Gómez" encuentra a "Julián Gómez Restrepo".
-        if ($coinciden >= min(2, count($suyas))) {
+        if ($coinciden >= 2) {
             $completos[] = $cliente;
         } elseif ($coinciden > 0) {
             $parciales[] = $cliente;
