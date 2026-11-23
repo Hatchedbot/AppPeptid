@@ -120,7 +120,7 @@ p { margin: 0 0 .75rem; }
 .campo { display: grid; gap: .35rem; }
 .campo label { font-weight: 600; font-size: .92rem; }
 .campo .ayuda { font-size: .85rem; color: var(--texto-suave); }
-input[type=text], input[type=password], input[type=email], input[type=tel], input[type=number], input[type=date],
+input:not([type]), input[type=text], input[type=password], input[type=email], input[type=tel], input[type=number], input[type=date],
 input[type=datetime-local], input[type=search], input[type=url], select, textarea {
   width: 100%; padding: .65rem .8rem; border: 1px solid var(--borde); border-radius: var(--radio-sm);
   background: var(--superficie); font: inherit; color: var(--texto); min-height: 46px;

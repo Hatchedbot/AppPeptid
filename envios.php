@@ -84,11 +84,11 @@ require __DIR__ . '/includes/header.php';
                                     <input type="hidden" name="id" value="<?= e($id) ?>">
                                     <div class="campo">
                                         <label for="transportadora-<?= e($id) ?>">Transportadora</label>
-                                        <input id="transportadora-<?= e($id) ?>" name="transportadora" maxlength="80" required>
+                                        <input type="text" id="transportadora-<?= e($id) ?>" name="transportadora" maxlength="80" required>
                                     </div>
                                     <div class="campo">
                                         <label for="guia-<?= e($id) ?>">Número de guía</label>
-                                        <input id="guia-<?= e($id) ?>" name="guia" maxlength="80" required>
+                                        <input type="text" id="guia-<?= e($id) ?>" name="guia" maxlength="80" required>
                                     </div>
                                     <button class="boton" name="accion" value="despachar">Guardar guía y despachar</button>
                                 </form>
