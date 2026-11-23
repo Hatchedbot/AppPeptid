@@ -148,3 +148,26 @@ test('Lía responde una pregunta sin mostrar alias internos', async ({ page }) =
   await expect(respuesta).not.toHaveText(/Cliente\s*\d+/);
   await expect(respuesta).not.toHaveText(/^\s*$/);
 });
+
+// Lía como asistente: con un solo nombre, sin tildes, y llevándote a la pantalla.
+for (const [frase, destino] of [
+  ['llevame al pedido de nicolas', /pedido\.php\?id=\d+/],
+  ['abre la ficha de julian', /cliente\.php\?id=\d+/],
+  ['muestrame los envios de nicolas', /envios\.php/],
+]) {
+  test(`Lía: «${frase}» lleva a la pantalla`, async ({ page }) => {
+    test.slow();
+    await entrar(page);
+    await page.getByRole('button', { name: 'Abrir a Lía' }).click();
+    const campo = page.getByRole('textbox', { name: 'Escribe tu pregunta para Lía' });
+    await campo.fill(frase);
+    await campo.press('Enter');
+    await expect(page).toHaveURL(destino, { timeout: 30_000 });
+  });
+}
+
+test('pedidos: la búsqueda ignora tildes', async ({ page }) => {
+  await entrar(page);
+  await page.goto('/pedidos.php?q=nicolas');
+  await expect(page.locator('table.tabla tbody tr').first()).toContainText('Nicolás');
+});

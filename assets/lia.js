@@ -186,8 +186,21 @@
     mensajes.scrollTop = mensajes.scrollHeight;
   }
 
+  function urlSegura(url) {
+    return typeof url === 'string' && /^[a-z0-9_\-]+\.php(\?[^\s#]*)?(#[a-z0-9_\-]+)?$/i.test(url);
+  }
+
+  // Si la persona pidió ir a algún lado («llévame», «abre», «muéstrame», «nuevo pedido»…), Lía la lleva sola.
+  var pideIr = /\b(ll[eé]v[ae]me|lleva|llevar|abre|abrir|mu[eé]strame|muestra|ens[eé][nñ]ame|ir a|ve a|v[aá]monos|quiero ver|ver (la|el|los|las|mis)|nuevo|nueva|registrar|crear|hacer un)\b/i;
+  function llevarSiPidio(texto, r) {
+    if (!r || !urlSegura(r.url)) { return; }
+    if (r.accion !== 'ir' && !pideIr.test(texto)) { return; }
+    estado.textContent = 'Te llevo…';
+    setTimeout(function () { window.location.href = r.url; }, 1100);
+  }
+
   function mostrarEnlace(url) {
-    var segura = typeof url === 'string' && /^[a-z0-9_\-]+\.php(\?[^\s]*)?$/i.test(url);
+    var segura = urlSegura(url);
     if (!segura) {
       enlace.hidden = true;
       acciones.hidden = true;
@@ -229,6 +242,7 @@
       mostrarEnlace(r && typeof r.url === 'string' ? r.url : '');
       decir(respuesta);
       ocupar(false);
+      llevarSiPidio(texto, r);
     }, function () {
       ocupar(false);
       responderError();
