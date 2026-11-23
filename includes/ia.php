@@ -332,30 +332,87 @@ function lia_responder(array $usuario, string $texto, array $historial): array
 /** Atiende solicitudes explícitas de navegación con los datos locales. */
 function lia_navegacion(string $texto, array $personas): ?array
 {
-    $patron = '/\b(?:llevame|lleva|llevar|ir|ve|abre|abrir|ver|muestrame|muestra|quiero\s+ver|ensename)\s+'
-        . '(?:a\s+)?(?:(?:al|el|la|los|las|mis)\s+)?(ficha|cliente|proceso|caso|plan|pedidos?|envios?)\s+de\s+(?=\S)/u';
     $normalizado = lia_normalizar($texto);
-    if (!preg_match($patron, $normalizado, $pedido, PREG_OFFSET_CAPTURE)) {
+    $inicio = '^\s*[¿¡]?\s*(?:(?:quiero|necesito|ayudame\s+a)\s+)?';
+    $verbo = '(?:llevame|lleva|llevar|ir|ve|abre|abrir|ver|muestrame|muestra|ensename)';
+    $ver = '(?:' . $verbo . '\s+(?:a\s+)?)?';
+    $articulo = '(?:(?:al|el|la|los|las|mis|un|una)\s+)?';
+    $crear = '(?:registrar|registra|crear|crea|hacer|haz)';
+    $nuevo = '(?:' . $crear . '\s+(?:(?:un|una)\s+)?(?:nuev[oa]\s+)?|nuev[oa]\s+)';
+    $para = '\s+(?:de|para|a)\s+(?:el cliente\s+)?';
+    $fin = '(?:,?\s+por favor)?[\s.!?…]*$';
+    // La consulta vacía permite que el enlace del chat conserve el ancla de inventario.
+    $rutas = [
+        [$ver . $nuevo . 'pedido(?: nuevo)?(?:' . $para . '(.+?))?', 'pedidos', 'pedido.php?nuevo=1', 'Te abrí un pedido nuevo. Revisa y guarda.', 'nuevo_pedido'],
+        [$ver . $nuevo . '(?:proceso|caso|plan)(?: nuevo)?' . $para . '(.+?)', 'casos', '', '', 'nuevo_proceso'],
+        [$ver . $nuevo . 'cliente(?: nuevo)?', 'clientes', 'cliente.php?nuevo=1', 'Te abrí un cliente nuevo. Revisa y guarda.'],
+        [$ver . '(?:nueva campana|crear (?:una )?campana|(?:mandar|enviar) (?:un )?mensajes? a todos)', 'mensajes', 'campana.php?nuevo=1', 'Te abrí una campaña nueva.'],
+        ['(?:escribirle|escribele|escribir)\s+a\s+(.+?)', 'mensajes', '', '', 'individual'],
+        [$ver . $articulo . '(?:que falta por enviar|guias pendientes|envios?)', 'pedidos', 'envios.php', 'Aquí tienes los envíos.'],
+        [$ver . $articulo . '(?:' . $crear . '\s+(?:una\s+)?entrada(?: de mercancia)?|(?:nueva )?entrada de mercancia)', 'inventario', 'inventario.php?q=#entrada', 'Te abrí la entrada de mercancía. Revisa y guarda.'],
+        [$ver . $articulo . 'stock de\s+(.+?)', 'inventario', '', '', 'stock'],
+        [$ver . $articulo . 'ficha de\s+(.+?)', 'clientes', '', '', 'cliente'],
+        [$ver . $articulo . 'cliente(?: de)?\s+(.+?)', 'clientes', '', '', 'cliente'],
+        [$ver . $articulo . 'pedidos de\s+(.+?)', 'pedidos', '', '', 'pedidos'],
+        [$ver . $articulo . 'pedido de\s+(.+?)', 'pedidos', '', '', 'pedido'],
+        [$ver . $articulo . 'envios? de\s+(.+?)', 'pedidos', '', '', 'envios'],
+        [$verbo . '\s+(?:a\s+)?(?:(?:al|el|la|los|las|mis)\s+)?(?:proceso|caso|plan) de\s+(.+?)', 'casos', '', '', 'proceso'],
+    ];
+    $secciones = ['inicio' => 'index.php', 'clientes' => 'clientes.php', 'pedidos' => 'pedidos.php',
+        'inventario' => 'inventario.php', 'mensajes' => 'mensajes.php', 'usuarios' => 'usuarios.php'];
+    foreach ($secciones as $seccion => $url) {
+        $rutas[] = [$ver . $articulo . $seccion, $seccion, $url, "Aquí tienes la sección de $seccion."];
+    }
+    $rutas[] = [$verbo . '\s+a\s+(?!(?:quien(?:es)?|cuantos?)\b)(.+?)', 'clientes', '', '', 'cliente'];
+
+    foreach ($rutas as $ruta) {
+        if (preg_match('/' . $inicio . $ruta[0] . $fin . '/uD', $normalizado, $pedido, PREG_OFFSET_CAPTURE)) {
+            break;
+        }
+    }
+    if (!$pedido) {
         return null;
     }
 
-    $destino = $pedido[1][0];
-    if (in_array($destino, ['pedido', 'pedidos', 'envio', 'envios'], true) && !puede('pedidos')) {
-        return ['respuesta' => 'No tienes permiso para consultar pedidos o envíos.', 'accion' => 'ninguna', 'url' => ''];
+    [, $permiso, $url, $respuesta] = $ruta;
+    if ($permiso !== 'inicio' && !puede($permiso)) {
+        return lia_acceso_denegado();
+    }
+    if (!isset($pedido[1])) {
+        return ['respuesta' => $respuesta, 'accion' => 'ir', 'url' => $url];
     }
 
-    $longitud = mb_strlen(substr($normalizado, 0, $pedido[0][1] + strlen($pedido[0][0])), 'UTF-8');
-    $termino = trim(mb_substr($texto, $longitud, null, 'UTF-8'), " \t\n\r.?!");
-    $termino = (string) preg_replace('/,?\s+por favor$/iu', '', $termino);
+    [$captura, $offset] = $pedido[1];
+    $inicioTermino = mb_strlen(substr($normalizado, 0, $offset), 'UTF-8');
+    $termino = trim(mb_substr($texto, $inicioTermino, mb_strlen($captura, 'UTF-8'), 'UTF-8'));
+    $destino = $ruta[4];
+    if ($destino === 'stock') {
+        return ['respuesta' => 'Aquí tienes las existencias que coinciden.', 'accion' => 'ir',
+                'url' => 'inventario.php?q=' . rawurlencode($termino)];
+    }
+
     $coincidencias = lia_buscar_clientes($termino, $personas);
     $candidatos = $coincidencias['completos'] ?: $coincidencias['parciales'];
     if (count($candidatos) !== 1) {
-        return lia_resultado_busqueda($termino, count($candidatos) > 1);
+        return puede('clientes')
+            ? lia_resultado_busqueda($termino, count($candidatos) > 1)
+            : lia_acceso_denegado();
     }
 
     $cliente = $candidatos[0];
     $nombre = primer_nombre($cliente['nombre']);
     $clienteId = (int) $cliente['id'];
+    if ($destino === 'nuevo_pedido' || $destino === 'nuevo_proceso') {
+        [$formulario, $tarea] = $destino === 'nuevo_pedido'
+            ? ['pedido.php', 'un pedido nuevo']
+            : ['caso.php', 'un proceso nuevo'];
+        return ['respuesta' => "Listo, te abrí $tarea para $nombre. Revisa y guarda.", 'accion' => 'ir',
+                'url' => $formulario . '?nuevo=1&cliente=' . $clienteId];
+    }
+    if ($destino === 'individual') {
+        return ['respuesta' => "Te abrí un mensaje individual. Selecciona a $nombre.", 'accion' => 'ir',
+                'url' => 'campana.php?nuevo=1&individual=1'];
+    }
     if ($destino === 'pedido') {
         $st = db()->prepare('SELECT id FROM pedidos WHERE cliente_id = ? ORDER BY creado DESC, id DESC LIMIT 1');
         $st->execute([$clienteId]);
@@ -370,11 +427,11 @@ function lia_navegacion(string $texto, array $personas): ?array
         return ['respuesta' => "Aquí tienes los pedidos de $nombre.", 'accion' => 'ir',
                 'url' => 'pedidos.php?cliente_id=' . $clienteId];
     }
-    if (in_array($destino, ['envio', 'envios'], true)) {
+    if ($destino === 'envios') {
         return ['respuesta' => "Aquí tienes los envíos de $nombre.", 'accion' => 'ir',
                 'url' => 'envios.php?q=' . rawurlencode($cliente['nombre'])];
     }
-    if (in_array($destino, ['proceso', 'caso', 'plan'], true)) {
+    if ($destino === 'proceso') {
         $st = db()->prepare("SELECT id FROM casos WHERE cliente_id = ? AND estado = 'activo'
                             ORDER BY fecha_inicio DESC, id DESC LIMIT 1");
         $st->execute([$clienteId]);
@@ -388,6 +445,11 @@ function lia_navegacion(string $texto, array $personas): ?array
 
     return ['respuesta' => "Aquí tienes la ficha de $nombre.", 'accion' => 'abrir_cliente',
             'url' => 'cliente.php?id=' . $clienteId];
+}
+
+function lia_acceso_denegado(): array
+{
+    return ['respuesta' => 'No tienes permiso para acceder a esa sección.', 'accion' => 'ninguna', 'url' => ''];
 }
 
 function lia_resultado_busqueda(string $termino, bool $ambiguo): array
