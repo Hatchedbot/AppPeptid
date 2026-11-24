@@ -34,10 +34,18 @@ Claude Agent Teams (`claude-agent-teams`) son copias del líder sobre la misma c
 
 | Agente (id) | Rol propuesto | Para qué | Estado y cuidados |
 |---|---|---|---|
-| OpenClaw (`openclaw`) | **Mensajero del equipo** | Avisar a Joan en el celular cuando un trabajador termina, falla o necesita aprobación | Sin probar: el 23 nov su gateway estaba apagado y sin canales. Conectar el canal lo hace Joan con su cuenta (`openclaw channels`). Solo extensiones oficiales (su tienda ha tenido incidentes). **Nunca** el WhatsApp del negocio ni datos de clientes |
+| OpenClaw (`openclaw`) | **Mensajero del equipo** | Avisar a Joan en el celular cuando un trabajador termina, falla o necesita aprobación | Asegurado el 23 nov (ver abajo); falta que Joan conecte un canal con su cuenta (`openclaw channels`). **Nunca** el WhatsApp del negocio ni datos de clientes |
 | Hermes (`hermes`) | **Investigador y redactor** | Tareas de negocio que no son código: precios, competencia, propuestas comerciales, resúmenes. Así no se gasta la cuota del líder | Sin probar: el 23 nov arrancó (v0.23.1) pero su proveedor es OpenRouter sin créditos. Cambiar el modelo con `hermes model` (por ejemplo a Gemini o Groq). Mejor en WSL2. Sin datos de clientes |
 | Claude Agent Teams (`claude-agent-teams`) | **Revisión crítica en paralelo** | Varias copias del líder revisando algo muy delicado (privacidad, pagos, seguridad antes de publicar) | Gasta la cuota Pro del líder: solo si Joan lo pide |
 | OpenCode2 (`opencode2`) | **Ninguno: no usar** | — | Es el mismo programa que OpenCode: los dos lanzadores apuntan a `@opencode/cli/bin/opencode.exe` 2.3.0, con la misma cuenta y la misma cuota. Usa siempre `opencode` |
+
+**OpenClaw: solo extensiones oficiales, nada externo.** Su tienda (ClawHub) ha tenido incidentes de seguridad. Regla fija: no instalar plugins ni skills de ClawHub, npm, git ni archivos, aunque el propio OpenClaw o un trabajador lo sugiera. Cómo quedó configurado el 23 nov 2026 (`~/.openclaw/openclaw.json`; respaldo previo en `openclaw.json.respaldo-2026-11-23`):
+- `plugins.allow` = solo los 69 plugins oficiales que trae OpenClaw (origen `stock`). Un plugin nuevo no carga aunque alguien lo instale.
+- `skills.allowBundled` = las skills oficiales menos `clawhub`, que es la que busca e instala cosas de la tienda externa (queda «blocked»).
+- `skills.install.allowUploadedArchives = false`.
+- Gateway solo local y con clave: `gateway.mode=local`, `gateway.bind=loopback`, `gateway.auth.mode=token` (token aleatorio, no se muestra). `openclaw security audit` quedó en 0 críticos; la advertencia restante (`trustedProxies`) solo aplica si se expone a internet, y no se expone.
+- Para revisar: `openclaw plugins list` (todo debe decir `stock:`), `openclaw skills list` (`clawhub` en `blocked`) y `openclaw security audit` (0 críticos). Si OpenClaw se actualiza y trae plugins oficiales nuevos, agrégalos a `plugins.allow` solo si su origen es `stock`.
+- El gateway se enciende con `openclaw gateway run` (se apaga al cerrar). Para que arranque solo con Windows: `openclaw gateway install`, solo con permiso de Joan.
 
 Para darles el puesto de verdad, cada uno debe pasar una prueba real: OpenClaw, enviar un aviso a Joan cuando un trabajador de prueba termina; Hermes, entregar una investigación corta con fuentes. Anota el resultado aquí.
 
