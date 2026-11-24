@@ -26,6 +26,28 @@ Los precios y cuotas de estas herramientas cambian cada pocas semanas. No compro
 
 **Lo que rindió en un proyecto real (AppPeptid, 20–22 nov 2026):** trabajaron 5 —Claude (líder), Codex, OpenCode, Copilot y Grok—. Kilo y Devin no arrancaron hasta crear los atajos de Git Bash (`agentes/instalador/crear-atajos-bash.sh`). El núcleo que de verdad rinde son 4 o 5: **Codex** escribe lo delicado mientras haya Plus, **Copilot** revisa, **OpenCode y Kilo** hacen lo pequeño y **Claude** planea, revisa y fusiona. Más agentes no es más trabajo: las cuotas gratis se agotan a mitad de tarea y cada agente extra le cuesta cuota al líder en encargos, vigilancia y revisión. Los demás quedan instalados por si un titular se queda sin cuota o un plan gratis mejora.
 
+### Por qué los 13 instalados no tienen puesto
+
+Para tener puesto, un agente debe cumplir tres cosas: funcionar gratis o con algo que Joan ya paga, resolver la tarea de prueba (sección 8) sin dañar nada, y ser confiable con los datos. Ninguno de estos las cumplió:
+
+| Agente | Motivo |
+|---|---|
+| Amp | Exige pago: no tiene créditos gratis |
+| Crush | Exige pago: sin créditos en Charm Hyper |
+| Muse | Exige pago (error 402) y cuenta de Meta |
+| Autohand | Su modelo exige plan Pro; pide cuenta propia incluso con clave propia |
+| Auggie | Sin sesión válida; su prueba gratis pide tarjeta |
+| Droid | Sin resultado: se topó con el límite diario de OpenRouter antes de trabajar |
+| Prime Agent | Sin resultado en la prueba grande (límite de OpenRouter). En la prueba del 16 nov sí resolvió, pero chocó con el límite de Gemini y no cerró solo |
+| Ante | Sin resultado (límite de OpenRouter); no acepta la clave de Gemini por variable de entorno |
+| MiMo | No terminó en 5 minutos; pide la clave con otro nombre de variable; datos bajo leyes de China |
+| Cline | No encontró el modelo gratuito pedido |
+| Mistral Vibe | Falló: arregló dos errores y metió uno nuevo; el uso real pide plan Pro |
+| Freebuff | No se probó a fondo: gratis con anuncios, modelos de gama media y condiciones que ya cambiaron una vez; OpenCode cubre lo mismo |
+| OMP | No se probó a fondo: variante de Pi hecha por una sola persona; Pi ya está en la reserva |
+
+**Candidatos para repetir la prueba** cuando haya cuota de OpenRouter disponible: Droid, Prime Agent, Cline y Ante. Fallaron por falta de cuota o de configuración, no por calidad. Si alguno resuelve la tarea de la sección 8 sin dañar nada, se le puede dar un puesto de relevo en `SKILL.md`.
+
 ---
 
 ## 1. Datos clave
