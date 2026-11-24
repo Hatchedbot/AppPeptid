@@ -12,6 +12,22 @@ Los precios y cuotas de estas herramientas cambian cada pocas semanas. No compro
 
 ---
 
+## 0. Resumen: de los 44 a los que rinden (actualizado el 23 nov 2026)
+
+| Grupo | Cuántos | Cuáles |
+|---|---|---|
+| Titulares (puesto en `SKILL.md`) | 8 | Claude, Codex, OpenCode, Kilo, Devin, Copilot, Antigravity, Kiro |
+| Relevos | 3 | Grok, Cursor, CodeBuddy |
+| Reserva para trabajo mecánico, con OpenRouter | 5 | Aider, Pi, Continue, Goose, Qwen Code |
+| Desinstalados (piden pago o son de terceros) | 8 | Rovo, Command Code, Jcode, ZCode, DSH, OpenClaude, Codebuff (20 nov) y Kimi (22 nov) |
+| Instalados pero vetados | 3 | Qoder y Qoder-CN (datos a Alibaba), Gemini CLI (retirado para cuentas gratis y Pro) |
+| No programan o están repetidos | 4 | Hermes, OpenClaw, OpenCode2, Claude Agent Teams |
+| Instalados sin puesto | ~13 | Freebuff, Mistral Vibe, Muse, MiMo, Auggie, Droid, Cline, Crush, OMP, Amp, Autohand, Ante, Prime Agent |
+
+**Lo que rindió en un proyecto real (AppPeptid, 20–22 nov 2026):** trabajaron 5 —Claude (líder), Codex, OpenCode, Copilot y Grok—. Kilo y Devin no arrancaron hasta crear los atajos de Git Bash (`agentes/instalador/crear-atajos-bash.sh`). El núcleo que de verdad rinde son 4 o 5: **Codex** escribe lo delicado mientras haya Plus, **Copilot** revisa, **OpenCode y Kilo** hacen lo pequeño y **Claude** planea, revisa y fusiona. Más agentes no es más trabajo: las cuotas gratis se agotan a mitad de tarea y cada agente extra le cuesta cuota al líder en encargos, vigilancia y revisión. Los demás quedan instalados por si un titular se queda sin cuota o un plan gratis mejora.
+
+---
+
 ## 1. Datos clave
 
 1. **Qwen Code ya no es gratis.** Alibaba eliminó el acceso gratuito por cuenta el 15 de abril de 2026 [oficial]. Ahora necesita clave de pago.
