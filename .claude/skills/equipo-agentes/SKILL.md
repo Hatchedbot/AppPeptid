@@ -30,6 +30,17 @@ Gemini CLI (`gemini`) ya no sirve con cuentas personales: desde el 18 de junio d
 
 Claude Agent Teams (`claude-agent-teams`) son copias del líder sobre la misma cuota Pro: resérvalo para cuando el usuario lo pida.
 
+### Roles fuera de programación (propuestos el 23 nov 2026, sin probar)
+
+| Agente (id) | Rol propuesto | Para qué | Estado y cuidados |
+|---|---|---|---|
+| OpenClaw (`openclaw`) | **Mensajero del equipo** | Avisar a Joan en el celular cuando un trabajador termina, falla o necesita aprobación | Sin probar: el 23 nov su gateway estaba apagado y sin canales. Conectar el canal lo hace Joan con su cuenta (`openclaw channels`). Solo extensiones oficiales (su tienda ha tenido incidentes). **Nunca** el WhatsApp del negocio ni datos de clientes |
+| Hermes (`hermes`) | **Investigador y redactor** | Tareas de negocio que no son código: precios, competencia, propuestas comerciales, resúmenes. Así no se gasta la cuota del líder | Sin probar: el 23 nov arrancó (v0.23.1) pero su proveedor es OpenRouter sin créditos. Cambiar el modelo con `hermes model` (por ejemplo a Gemini o Groq). Mejor en WSL2. Sin datos de clientes |
+| Claude Agent Teams (`claude-agent-teams`) | **Revisión crítica en paralelo** | Varias copias del líder revisando algo muy delicado (privacidad, pagos, seguridad antes de publicar) | Gasta la cuota Pro del líder: solo si Joan lo pide |
+| OpenCode2 (`opencode2`) | **Ninguno: no usar** | — | Es el mismo programa que OpenCode: los dos lanzadores apuntan a `@opencode/cli/bin/opencode.exe` 2.3.0, con la misma cuenta y la misma cuota. Usa siempre `opencode` |
+
+Para darles el puesto de verdad, cada uno debe pasar una prueba real: OpenClaw, enviar un aviso a Joan cuando un trabajador de prueba termina; Hermes, entregar una investigación corta con fuentes. Anota el resultado aquí.
+
 Relevos que también resolvieron la prueba, con cuotas pequeñas: Grok (`grok`), Cursor (`cursor`) y CodeBuddy (`codebuddy`). CodeBuddy envía los datos a Tencent, en China. Qoder y Qoder-CN resolvieron o se conectaron, pero no se usan: Joan no quiere enviar datos a Alibaba. El resto de agentes instalados no tiene puesto; antes de darle uno, lee [`referencia-agentes.md`](referencia-agentes.md).
 
 ## Modelos abiertos gratuitos
